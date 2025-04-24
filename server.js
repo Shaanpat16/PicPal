@@ -9,10 +9,23 @@ const { v4: uuid } = require('uuid');
 const app = express();
 const PORT = 3000;
 
+const uploadsPath = path.join(__dirname, 'uploads');
+const tempPath = path.join(__dirname, 'temp');
+const dataPath = path.join(__dirname, 'data');
+const USERS_FILE = path.join(dataPath, 'users.json');
+const IMAGES_FILE = path.join(dataPath, 'images.json');
+
+// Ensure required folders exist
+if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
+if (!fs.existsSync(tempPath)) fs.mkdirSync(tempPath);
+if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath);
+if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
+if (!fs.existsSync(IMAGES_FILE)) fs.writeFileSync(IMAGES_FILE, '[]');
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsPath));
 
 app.use(session({
   secret: 'picpal-secret',
@@ -21,21 +34,13 @@ app.use(session({
 }));
 
 const storage = multer.diskStorage({
-  destination: 'temp/',
+  destination: tempPath,
   filename: (req, file, cb) => {
     cb(null, `${uuid()}-${file.originalname}`);
   }
 });
 
 const upload = multer({ storage });
-
-const USERS_FILE = 'data/users.json';
-const IMAGES_FILE = 'data/images.json';
-
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
-if (!fs.existsSync('data')) fs.mkdirSync('data');
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
-if (!fs.existsSync(IMAGES_FILE)) fs.writeFileSync(IMAGES_FILE, '[]');
 
 function loadUsers() {
   return JSON.parse(fs.readFileSync(USERS_FILE));
@@ -88,7 +93,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
   const file = req.file;
   const ext = path.extname(file.originalname).toLowerCase();
   const filename = `${uuid()}${ext}`;
-  const outputPath = path.join('uploads', filename);
+  const outputPath = path.join(uploadsPath, filename);
 
   try {
     await sharp(file.path)
@@ -151,7 +156,7 @@ app.delete('/delete/:id', (req, res) => {
   saveImages(images);
 
   try {
-    fs.unlinkSync(path.join('uploads', img.filename));
+    fs.unlinkSync(path.join(uploadsPath, img.filename));
   } catch (err) {
     console.error('Failed to delete image file:', err);
   }
