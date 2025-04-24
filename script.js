@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Tabs & Sections
+  // Sections and buttons
   const streamTab = document.getElementById('streamTab');
   const myPhotosTab = document.getElementById('myPhotosTab');
   const accountTab = document.getElementById('accountTab');
   const streamSection = document.getElementById('stream');
   const myPhotosSection = document.getElementById('myPhotos');
   const accountSection = document.getElementById('account');
-
-  // Auth & UI
+  const uploadBtn = document.getElementById('uploadBtn');
+  const photoInput = document.getElementById('photoInput');
+  const streamImages = document.getElementById('streamImages');
+  const myImages = document.getElementById('myImages');
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   const authModal = document.getElementById('authModal');
@@ -18,20 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  // Upload
-  const uploadBtn = document.getElementById('uploadBtn');
-  const photoInput = document.getElementById('photoInput');
-  const streamImages = document.getElementById('streamImages');
-  const myImages = document.getElementById('myImages');
-
   let isLogin = true;
 
-  // Utility
   const showTab = (tabId) => {
     streamSection.style.display = 'none';
     myPhotosSection.style.display = 'none';
     accountSection.style.display = 'none';
-
     if (tabId === 'stream') streamSection.style.display = 'block';
     if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
     if (tabId === 'account') accountSection.style.display = 'block';
@@ -41,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
     authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
     toggleAuth.innerHTML = isLogin
-      ? `Don't have an account? <span class="switchAuth">Sign up</span>`
-      : `Already have an account? <span class="switchAuth">Login</span>`;
+      ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
+      : "Already have an account? <span class='switchAuth'>Login</span>";
     document.querySelector('.switchAuth').addEventListener('click', () => {
       isLogin = !isLogin;
       updateAuthText();
@@ -55,12 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const imageEl = document.createElement('img');
     imageEl.src = `/uploads/${img.filename}`;
-
-    const likes = document.createElement('div');
-    likes.textContent = `❤️ ${img.likes || 0}`;
-
+    imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
-    card.appendChild(likes);
+
+    const likeDisplay = document.createElement('div');
+    likeDisplay.textContent = `❤️ ${img.likes || 0}`;
+    card.appendChild(likeDisplay);
 
     if (isMine) {
       const delBtn = document.createElement('button');
@@ -78,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
       likeBtn.className = 'likeBtn';
       likeBtn.onclick = async () => {
         await fetch(`/like/${img.id}`, { method: 'POST' });
-        loadStream();
+        likeDisplay.textContent = `❤️ ${img.likes + 1}`;
       };
       card.appendChild(likeBtn);
     }
@@ -86,14 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   };
 
-  // Load functions
   const loadStream = async () => {
     const res = await fetch('/images');
     const images = await res.json();
     streamImages.innerHTML = '';
-    images.forEach(img => {
-      streamImages.appendChild(makeImageCard(img, false));
-    });
+    images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
   };
 
   const loadMyPhotos = async () => {
@@ -101,12 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) return;
     const images = await res.json();
     myImages.innerHTML = '';
-    images.forEach(img => {
-      myImages.appendChild(makeImageCard(img, true));
-    });
+    images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
   };
 
-  // Upload handler
+  // Upload preview + upload
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -121,16 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadStream();
       await loadMyPhotos();
     } else {
-      alert('Upload failed');
+      const err = await res.json();
+      alert(`Upload failed: ${err.error || 'Unknown error'}`);
     }
   });
 
-  // Tab switching
+  // Tab navigation
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
 
-  // Auth modal
+  // Auth modal logic
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
@@ -175,8 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStream();
   });
 
-  // Start app
+  // Initialize
   showTab('stream');
   loadStream();
   loadMyPhotos();
 });
+
