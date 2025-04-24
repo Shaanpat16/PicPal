@@ -5,44 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PicPal</title>
   <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="icon" href="favicon.png" />
 </head>
 <body>
   <header>
-    <h1>📸 PicPal</h1>
+    <div class="logo">PicPal</div>
     <nav>
-      <button id="streamTab">Stream</button>
-      <button id="myPhotosTab">My Photos</button>
-      <button id="accountTab">My Account</button>
-      <button id="logoutBtn" style="display: none;">Logout</button>
-      <button id="loginBtn">Login</button>
+      <button id="streamTab" class="nav-icon"><i class="fas fa-home"></i></button>
+      <button id="myPhotosTab" class="nav-icon"><i class="fas fa-user"></i></button>
+      <button id="accountTab" class="nav-icon"><i class="fas fa-cog"></i></button>
+      <button id="logoutBtn" class="nav-icon" style="display: none;"><i class="fas fa-sign-out-alt"></i></button>
+      <button id="loginBtn" class="nav-icon"><i class="fas fa-sign-in-alt"></i></button>
     </nav>
   </header>
 
   <main>
     <section id="uploadSection">
-      <h2>Upload a Photo</h2>
+      <label for="photoInput" class="upload-label">
+        <i class="fas fa-plus-circle"></i> Add Photo
+      </label>
       <input type="file" id="photoInput" accept="image/*" />
       <button id="uploadBtn">Upload</button>
     </section>
 
     <section id="stream" class="tabContent">
-      <h2>Global Stream</h2>
-      <div id="streamImages"></div>
+      <div id="streamImages" class="photo-grid"></div>
     </section>
 
     <section id="myPhotos" class="tabContent" style="display: none;">
-      <h2>My Photos</h2>
-      <div id="myImages"></div>
+      <div id="myImages" class="photo-grid"></div>
     </section>
 
     <section id="account" class="tabContent" style="display: none;">
       <h2>Account Settings</h2>
       <p>Welcome to your account page.</p>
-      <!-- More settings can go here -->
     </section>
   </main>
 
-  <!-- Login / Signup Modal -->
   <div id="authModal" class="modal">
     <div class="modal-content">
       <span id="closeModal" class="close">&times;</span>
