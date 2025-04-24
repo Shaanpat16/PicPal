@@ -1,42 +1,54 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
-  background: #fafafa;
+  background-color: #fafafa;
+  color: #262626;
 }
 
 header {
-  background: #222;
-  color: white;
+  background-color: white;
+  border-bottom: 1px solid #dbdbdb;
   padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 header h1 {
+  font-family: 'Pacifico', cursive;
+  font-size: 1.5rem;
+  color: #262626;
   margin: 0;
 }
 
 nav button {
-  background: #444;
-  color: white;
+  background: none;
   border: none;
-  padding: 10px;
+  color: #262626;
+  font-size: 1rem;
+  padding: 8px 12px;
   margin-left: 5px;
   cursor: pointer;
+  border-radius: 5px;
 }
 
 nav button:hover {
-  background: #666;
+  background-color: #efefef;
 }
 
 main {
   padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 #uploadSection {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  text-align: center;
 }
 
 .tabContent {
@@ -46,37 +58,45 @@ main {
 #streamImages,
 #myImages {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
 }
 
 .imageCard {
   background: white;
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
+  border: 1px solid #dbdbdb;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.05);
 }
 
-img {
-  max-width: 100%;
-  border-radius: 4px;
+.imageCard img {
+  width: 100%;
+  display: block;
+}
+
+.imageCard .actions {
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .likeBtn,
 .deleteBtn {
-  margin-top: 5px;
-  padding: 5px 10px;
+  padding: 6px 10px;
   border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
 .likeBtn {
-  background-color: #007bff;
+  background-color: #3897f0;
   color: white;
 }
 
 .deleteBtn {
-  background-color: #e74c3c;
+  background-color: #ed4956;
   color: white;
 }
 
@@ -85,30 +105,29 @@ img {
   display: none;
   position: fixed;
   z-index: 100;
-  padding-top: 100px;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
-  overflow: auto;
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgba(0,0,0,0.5);
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-content {
   background-color: white;
-  margin: auto;
-  padding: 20px;
-  border-radius: 4px;
+  padding: 30px;
+  border-radius: 10px;
   width: 300px;
-  position: relative;
   text-align: center;
+  position: relative;
 }
 
 .close {
   position: absolute;
-  top: 5px;
-  right: 10px;
-  font-size: 20px;
+  top: 8px;
+  right: 12px;
+  font-size: 24px;
   cursor: pointer;
 }
 
@@ -118,6 +137,7 @@ input[type="password"] {
   padding: 10px;
   margin: 10px 0;
   border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 #authActionBtn {
@@ -126,9 +146,13 @@ input[type="password"] {
   border: none;
   padding: 10px 15px;
   cursor: pointer;
+  border-radius: 5px;
+  width: 100%;
 }
 
 #switchAuth {
-  color: #007bff;
+  color: #3897f0;
   cursor: pointer;
+  display: inline-block;
+  margin-top: 10px;
 }
