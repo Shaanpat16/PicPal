@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const app = express();
 const PORT = 3000;
 
-app.use(express.static('.'));
+app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
@@ -20,7 +20,14 @@ app.use(session({
   saveUninitialized: true
 }));
 
-const upload = multer({ dest: 'temp/' });
+const storage = multer.diskStorage({
+  destination: 'temp/',
+  filename: (req, file, cb) => {
+    cb(null, `${uuid()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
 
 const USERS_FILE = 'data/users.json';
 const IMAGES_FILE = 'data/images.json';
@@ -94,7 +101,8 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
     id: uuid(),
     filename,
     userId: req.session.user.id,
-    likes: 0
+    likes: 0,
+    timestamp: new Date().toISOString()
   });
   saveImages(images);
 
@@ -102,7 +110,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
 });
 
 app.get('/images', (req, res) => {
-  const images = loadImages();
+  const images = loadImages().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   res.json(images);
 });
 
