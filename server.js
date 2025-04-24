@@ -86,27 +86,34 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
 
   const file = req.file;
-  const filename = `${uuid()}.jpg`;
-  const outputPath = `uploads/${filename}`;
+  const ext = path.extname(file.originalname).toLowerCase();
+  const filename = `${uuid()}${ext}`;
+  const outputPath = path.join('uploads', filename);
 
-  await sharp(file.path)
-    .resize(800, 800, { fit: sharp.fit.cover })
-    .toFormat('jpeg')
-    .toFile(outputPath);
+  try {
+    await sharp(file.path)
+      .resize({ width: 800, height: 800, fit: 'cover' })
+      .toFormat('jpeg')
+      .toFile(outputPath);
 
-  fs.unlinkSync(file.path);
+    fs.unlinkSync(file.path);
 
-  const images = loadImages();
-  images.push({
-    id: uuid(),
-    filename,
-    userId: req.session.user.id,
-    likes: 0,
-    timestamp: new Date().toISOString()
-  });
-  saveImages(images);
+    const images = loadImages();
+    const newImage = {
+      id: uuid(),
+      filename,
+      userId: req.session.user.id,
+      likes: 0,
+      timestamp: new Date().toISOString()
+    };
+    images.unshift(newImage);
+    saveImages(images);
 
-  res.json({ message: 'Uploaded' });
+    res.json({ message: 'Uploaded', image: newImage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Image processing failed' });
+  }
 });
 
 app.get('/images', (req, res) => {
@@ -116,7 +123,6 @@ app.get('/images', (req, res) => {
 
 app.get('/my-images', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
-
   const images = loadImages().filter(img => img.userId === req.session.user.id);
   res.json(images);
 });
@@ -144,7 +150,12 @@ app.delete('/delete/:id', (req, res) => {
   images = images.filter(i => i.id !== req.params.id);
   saveImages(images);
 
-  fs.unlinkSync(`uploads/${img.filename}`);
+  try {
+    fs.unlinkSync(path.join('uploads', img.filename));
+  } catch (err) {
+    console.error('Failed to delete image file:', err);
+  }
+
   res.json({ message: 'Deleted' });
 });
 
