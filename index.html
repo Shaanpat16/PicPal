@@ -1,66 +1,59 @@
-// Tab Switching
-document.getElementById("streamTab").addEventListener("click", () => showTab("stream"));
-document.getElementById("myPhotosTab").addEventListener("click", () => showTab("myPhotos"));
-document.getElementById("accountTab").addEventListener("click", () => showTab("account"));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PicPal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>📸 PicPal</h1>
+    <nav>
+      <button id="streamTab">Stream</button>
+      <button id="myPhotosTab">My Photos</button>
+      <button id="accountTab">My Account</button>
+      <button id="logoutBtn" style="display: none;">Logout</button>
+      <button id="loginBtn">Login</button>
+    </nav>
+  </header>
 
-function showTab(tabId) {
-  document.querySelectorAll(".tabContent").forEach((tab) => tab.style.display = "none");
-  document.getElementById(tabId).style.display = "block";
-}
+  <main>
+    <section id="uploadSection">
+      <h2>Upload a Photo</h2>
+      <input type="file" id="photoInput" accept="image/*" />
+      <button id="uploadBtn">Upload</button>
+    </section>
 
-// Upload Preview
-const photoInput = document.getElementById("photoInput");
-const uploadBtn = document.getElementById("uploadBtn");
+    <section id="stream" class="tabContent">
+      <h2>Global Stream</h2>
+      <div id="streamImages"></div>
+    </section>
 
-uploadBtn.addEventListener("click", () => {
-  if (photoInput.files.length === 0) return alert("Please choose a photo!");
-  
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = document.createElement("img");
-    img.src = e.target.result;
-    img.className = "photo";
-    document.getElementById("myImages").prepend(img);
-    document.getElementById("myPhotosTab").click(); // Switch to My Photos tab
-  };
-  reader.readAsDataURL(photoInput.files[0]);
-});
+    <section id="myPhotos" class="tabContent" style="display: none;">
+      <h2>My Photos</h2>
+      <div id="myImages"></div>
+    </section>
 
-// Auth Modal
-const authModal = document.getElementById("authModal");
-const loginBtn = document.getElementById("loginBtn");
-const closeModal = document.getElementById("closeModal");
+    <section id="account" class="tabContent" style="display: none;">
+      <h2>Account Settings</h2>
+      <p>Welcome to your account page.</p>
+      <!-- More settings can go here -->
+    </section>
+  </main>
 
-loginBtn.onclick = () => authModal.style.display = "block";
-closeModal.onclick = () => authModal.style.display = "none";
-window.onclick = (e) => {
-  if (e.target == authModal) authModal.style.display = "none";
-};
+  <!-- Login / Signup Modal -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+      <h2 id="authTitle">Login</h2>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="authActionBtn">Login</button>
+      <p id="toggleAuth">Don't have an account? <span id="switchAuth">Sign up</span></p>
+    </div>
+  </div>
 
-// Toggle between Login/SignUp
-const switchAuth = document.getElementById("switchAuth");
-const authTitle = document.getElementById("authTitle");
-const authActionBtn = document.getElementById("authActionBtn");
-
-switchAuth.onclick = () => {
-  if (authTitle.innerText === "Login") {
-    authTitle.innerText = "Sign Up";
-    authActionBtn.innerText = "Sign Up";
-    switchAuth.innerText = "Login";
-    document.getElementById("toggleAuth").firstChild.nodeValue = "Already have an account? ";
-  } else {
-    authTitle.innerText = "Login";
-    authActionBtn.innerText = "Login";
-    switchAuth.innerText = "Sign up";
-    document.getElementById("toggleAuth").firstChild.nodeValue = "Don't have an account? ";
-  }
-};
-
-// Dummy stream images (for now)
-const streamImages = document.getElementById("streamImages");
-for (let i = 1; i <= 12; i++) {
-  const img = document.createElement("img");
-  img.src = `https://source.unsplash.com/random/300x300?sig=${i}`;
-  img.className = "photo";
-  streamImages.appendChild(img);
-}
+  <script src="script.js"></script>
+</body>
+</html>
