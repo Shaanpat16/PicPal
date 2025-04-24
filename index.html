@@ -1,1 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PicPal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>PicPal</h1>
+    <nav>
+      <button onclick="showTab('stream')">Stream</button>
+      <button onclick="showTab('my-photos')">My Photos</button>
+      <button onclick="showTab('account')">Account</button>
+    </nav>
+  </header>
 
+  <main>
+    <section id="upload-section">
+      <input type="file" id="imageUpload" accept="image/*">
+    </section>
+
+    <section id="stream" class="tab"></section>
+    <section id="my-photos" class="tab" style="display: none;"></section>
+    <section id="account" class="tab" style="display: none;">
+      <h2>Account Settings</h2>
+      <p>Manage your username, password, and email here.</p>
+      <!-- Add forms for settings management as needed -->
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
