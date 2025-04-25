@@ -46,16 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
-
+  
     const imageEl = document.createElement('img');
-    imageEl.src = `/uploads/${img.filename}`;
+    imageEl.src = img.url; // CHANGED from `/uploads/${img.filename}`
     imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
-
+  
     const likeDisplay = document.createElement('div');
     likeDisplay.textContent = `❤️ ${img.likes || 0}`;
     card.appendChild(likeDisplay);
-
+  
     if (isMine) {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       card.appendChild(likeBtn);
     }
-
+  
     return card;
-  };
+  };  
 
   const loadStream = async () => {
     const res = await fetch('/images');

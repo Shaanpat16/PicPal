@@ -5,18 +5,24 @@ const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuid } = require('uuid');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier'); // Needed for buffer upload
 
 const app = express();
 const PORT = 3000;
 
-const uploadsPath = path.join(__dirname, 'uploads');
+// Cloudinary config (replace with your actual credentials)
+cloudinary.config({
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET
+});
+
 const tempPath = path.join(__dirname, 'temp');
 const dataPath = path.join(__dirname, 'data');
 const USERS_FILE = path.join(dataPath, 'users.json');
 const IMAGES_FILE = path.join(dataPath, 'images.json');
 
-// Ensure required folders exist
-if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 if (!fs.existsSync(tempPath)) fs.mkdirSync(tempPath);
 if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath);
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
@@ -25,7 +31,6 @@ if (!fs.existsSync(IMAGES_FILE)) fs.writeFileSync(IMAGES_FILE, '[]');
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(uploadsPath));
 
 app.use(session({
   secret: 'picpal-secret',
@@ -33,13 +38,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-const storage = multer.diskStorage({
-  destination: tempPath,
-  filename: (req, file, cb) => {
-    cb(null, `${uuid()}-${file.originalname}`);
-  }
-});
-
+const storage = multer.memoryStorage(); // store in memory for sharp
 const upload = multer({ storage });
 
 function loadUsers() {
@@ -58,6 +57,7 @@ function saveImages(images) {
   fs.writeFileSync(IMAGES_FILE, JSON.stringify(images, null, 2));
 }
 
+// Auth routes
 app.post('/signup', (req, res) => {
   const { username, password } = req.body;
   const users = loadUsers();
@@ -87,26 +87,38 @@ app.post('/logout', (req, res) => {
   res.json({ message: 'Logged out' });
 });
 
+// Upload route with Cloudinary
 app.post('/upload', upload.single('photo'), async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
 
-  const file = req.file;
-  const ext = path.extname(file.originalname).toLowerCase();
-  const filename = `${uuid()}${ext}`;
-  const outputPath = path.join(uploadsPath, filename);
-
   try {
-    await sharp(file.path)
+    // Resize image to 800x800 and convert to JPEG
+    const processedBuffer = await sharp(req.file.buffer)
       .resize({ width: 800, height: 800, fit: 'cover' })
-      .toFormat('jpeg')
-      .toFile(outputPath);
+      .jpeg()
+      .toBuffer();
 
-    fs.unlinkSync(file.path);
+    // Upload to Cloudinary
+    const streamUpload = () => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'picpal_uploads' },
+          (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+          }
+        );
+        streamifier.createReadStream(processedBuffer).pipe(stream);
+      });
+    };
+
+    const result = await streamUpload();
 
     const images = loadImages();
     const newImage = {
       id: uuid(),
-      filename,
+      url: result.secure_url,
+      public_id: result.public_id, // in case you want to delete later
       userId: req.session.user.id,
       likes: 0,
       timestamp: new Date().toISOString()
@@ -117,21 +129,24 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
     res.json({ message: 'Uploaded', image: newImage });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Image processing failed' });
+    res.status(500).json({ error: 'Upload failed' });
   }
 });
 
+// Get all images
 app.get('/images', (req, res) => {
   const images = loadImages().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   res.json(images);
 });
 
+// Get images uploaded by current user
 app.get('/my-images', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
   const images = loadImages().filter(img => img.userId === req.session.user.id);
   res.json(images);
 });
 
+// Like image
 app.post('/like/:id', (req, res) => {
   const images = loadImages();
   const image = images.find(img => img.id === req.params.id);
@@ -142,7 +157,8 @@ app.post('/like/:id', (req, res) => {
   res.json({ message: 'Liked' });
 });
 
-app.delete('/delete/:id', (req, res) => {
+// Delete image
+app.delete('/delete/:id', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
 
   let images = loadImages();
@@ -155,10 +171,11 @@ app.delete('/delete/:id', (req, res) => {
   images = images.filter(i => i.id !== req.params.id);
   saveImages(images);
 
+  // Delete from Cloudinary
   try {
-    fs.unlinkSync(path.join(uploadsPath, img.filename));
+    await cloudinary.uploader.destroy(img.public_id);
   } catch (err) {
-    console.error('Failed to delete image file:', err);
+    console.error('Cloudinary deletion error:', err);
   }
 
   res.json({ message: 'Deleted' });
