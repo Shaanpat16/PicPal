@@ -62,6 +62,14 @@ function saveImages(images) {
   fs.writeFileSync(IMAGES_FILE, JSON.stringify(images, null, 2));
 }
 
+// Define your image schema to include comments
+const ImageSchema = new mongoose.Schema({
+  url: String,
+  username: String,
+  comments: [{ username: String, text: String }],
+  likes: { type: Number, default: 0 }
+});
+
 // Auth routes
 app.post('/signup', (req, res) => {
   const { username, password } = req.body;
@@ -125,7 +133,9 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       url: result.secure_url,
       public_id: result.public_id, // in case you want to delete later
       userId: req.session.user.id,
+      username: req.session.user.username, // Save the uploader's username
       likes: 0,
+      comments: [],
       timestamp: new Date().toISOString()
     };
     images.unshift(newImage);
@@ -184,6 +194,29 @@ app.delete('/delete/:id', async (req, res) => {
   }
 
   res.json({ message: 'Deleted' });
+});
+
+// Post a comment on an image
+app.post('/comment/:id', (req, res) => {
+  const { text } = req.body;
+  const imageId = req.params.id;
+  const username = req.session.user ? req.session.user.username : null;
+
+  if (!text || !username) return res.status(400).json({ message: 'Comment text and username are required.' });
+
+  try {
+    const images = loadImages();
+    const image = images.find(img => img.id === imageId);
+
+    if (!image) return res.status(404).json({ message: 'Image not found' });
+
+    image.comments.push({ username, text });
+    saveImages(images);
+
+    res.status(200).json({ message: 'Comment added!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add comment.' });
+  }
 });
 
 // Serve index.html from the views folder

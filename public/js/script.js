@@ -56,7 +56,42 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous'; // Display username
     card.appendChild(usernameEl);
-  
+
+    // Comment section
+    const commentsContainer = document.createElement('div');
+    commentsContainer.className = 'commentsContainer';
+
+    img.comments.forEach(comment => {
+      const commentEl = document.createElement('div');
+      commentEl.className = 'comment';
+      commentEl.textContent = `${comment.username}: ${comment.text}`;
+      commentsContainer.appendChild(commentEl);
+    });
+
+    const commentInput = document.createElement('input');
+    commentInput.type = 'text';
+    commentInput.placeholder = 'Add a comment...';
+    commentInput.className = 'commentInput';
+    commentsContainer.appendChild(commentInput);
+
+    const commentBtn = document.createElement('button');
+    commentBtn.textContent = 'Post Comment';
+    commentBtn.className = 'commentBtn';
+    commentBtn.onclick = async () => {
+      const commentText = commentInput.value.trim();
+      if (!commentText) return;
+
+      await fetch(`/comment/${img.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: commentText })
+      });
+      loadStream(); // Reload the stream to show the new comment
+    };
+    commentsContainer.appendChild(commentBtn);
+
+    card.appendChild(commentsContainer);
+
     const likeDisplay = document.createElement('div');
     likeDisplay.textContent = `❤️ ${img.likes || 0}`;
     card.appendChild(likeDisplay);
@@ -116,16 +151,15 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadMyPhotos();
     } else {
       const err = await res.json();
-      alert(`Upload failed: ${err.error || 'Unknown error'}`);
+      alert(`Upload failed: ${err.message}`);
     }
   });
 
-  // Tab navigation
+  // Event listeners for tabs
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
 
-  // Auth modal logic
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
@@ -136,42 +170,40 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   authActionBtn.addEventListener('click', async () => {
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-    if (!username || !password) return alert('Enter both fields');
+    const username = usernameInput.value;
+    const password = passwordInput.value;
 
-    const path = isLogin ? '/login' : '/signup';
+    if (!username || !password) return alert('Please fill in all fields.');
+    
+    const res = isLogin
+      ? await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        })
+      : await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
 
-    const res = await fetch(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-
+    const result = await res.json();
     if (res.ok) {
-      authModal.style.display = 'none';
-      usernameInput.value = '';
-      passwordInput.value = '';
       loginBtn.style.display = 'none';
-      logoutBtn.style.display = 'inline';
-      showTab('myPhotos');
-      loadMyPhotos();
+      logoutBtn.style.display = 'block';
+      authModal.style.display = 'none';
     } else {
-      alert('Authentication failed');
+      alert(result.message);
     }
   });
 
   logoutBtn.addEventListener('click', async () => {
-    await fetch('/logout');
+    await fetch('/logout', { method: 'POST' });
+    loginBtn.style.display = 'block';
     logoutBtn.style.display = 'none';
-    loginBtn.style.display = 'inline';
-    myImages.innerHTML = '';
-    showTab('stream');
-    loadStream();
   });
 
-  // Initialize
-  showTab('stream');
   loadStream();
   loadMyPhotos();
+  showTab('stream');
 });
