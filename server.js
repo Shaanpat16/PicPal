@@ -7,6 +7,7 @@ const path = require('path');
 const { v4: uuid } = require('uuid');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier'); // Needed for buffer upload
+require('dotenv').config();
 
 const app = express();
 const PORT = 3000;
