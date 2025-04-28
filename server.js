@@ -63,7 +63,7 @@ function saveImages(images) {
 }
 
 // Define your image schema to include comments
-const ImageSchema = new mongoose.Schema({
+const ImageSchema = {
   url: String,
   username: String,
   comments: [{ username: String, text: String }],
