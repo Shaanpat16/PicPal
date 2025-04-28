@@ -1,5 +1,7 @@
 // server.js
 
+// (All your initial setup here stays the same: imports, env checks, connection, schemas...)
+
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -13,29 +15,16 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Check required environment variables
-['MONGODB_URI', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'SESSION_SECRET'].forEach(key => {
-  if (!process.env[key]) {
-    console.error(`❌ Missing environment variable: ${key}`);
-    process.exit(1);
-  }
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('✅ Connected to MongoDB'))
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1);
 });
-
-// MongoDB connection with retry
-const connectWithRetry = () => {
-  console.log('🔄 Attempting MongoDB connection...');
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.log('⏳ Retrying in 5 seconds...');
-    setTimeout(connectWithRetry, 5000);
-  });
-};
-connectWithRetry();
 
 // Models
 const userSchema = new mongoose.Schema({
@@ -79,65 +68,59 @@ app.use(session({
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     crypto: { secret: process.env.SESSION_SECRET },
-    ttl: 14 * 24 * 60 * 60, // 14 days
-    autoRemove: 'native',
   }),
 }));
 
-// Routes
-
-// Sign Up
+// Auth routes
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
 
   try {
     const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: 'Username already taken' });
+    if (existingUser) return res.status(400).json({ message: 'Username already taken' });
 
     const user = new User({ username, password });
     await user.save();
     req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Signed up' });
   } catch (err) {
-    console.error('Signup error:', err);
-    res.status(500).json({ error: 'Signup failed' });
+    console.error(err);
+    res.status(500).json({ message: 'Signup failed' });
   }
 });
 
-// Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
 
   try {
     const user = await User.findOne({ username });
-    if (!user || user.password !== password) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user || user.password !== password) return res.status(401).json({ message: 'Invalid credentials' });
 
     req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Logged in' });
   } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed' });
+    console.error(err);
+    res.status(500).json({ message: 'Login failed' });
   }
 });
 
-// Logout
 app.post('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
-      console.error('Logout error:', err);
-      return res.status(500).json({ error: 'Logout failed' });
+      console.error(err);
+      return res.status(500).json({ message: 'Logout failed' });
     }
     res.clearCookie('connect.sid');
     res.json({ message: 'Logged out' });
   });
 });
 
-// Upload Image
+// Image upload
 app.post('/upload', upload.single('photo'), async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
     const processedBuffer = await sharp(req.file.buffer)
@@ -163,66 +146,65 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
     await newImage.save();
     res.json({ message: 'Image uploaded', image: newImage });
   } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error(err);
+    res.status(500).json({ message: 'Upload failed' });
   }
 });
 
-// Get all images
+// Fetch images
 app.get('/images', async (req, res) => {
   try {
     const images = await Image.find({}).sort({ timestamp: -1 });
     res.json(images);
   } catch (err) {
-    console.error('Fetch images error:', err);
-    res.status(500).json({ error: 'Failed to fetch images' });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch images' });
   }
 });
 
-// Get my images
 app.get('/my-images', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const images = await Image.find({ userId: req.session.user._id });
+    const images = await Image.find({ userId: req.session.user._id }).sort({ timestamp: -1 });
     res.json(images);
   } catch (err) {
-    console.error('Fetch my-images error:', err);
-    res.status(500).json({ error: 'Failed to fetch images' });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch my images' });
   }
 });
 
-// Like an image
+// Like
 app.post('/like/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
     const image = await Image.findById(req.params.id);
-    if (!image) return res.status(404).json({ error: 'Image not found' });
+    if (!image) return res.status(404).json({ message: 'Image not found' });
 
     if (image.likedBy.includes(req.session.user._id)) {
-      return res.status(400).json({ error: 'Already liked' });
+      return res.status(400).json({ message: 'Already liked' });
     }
 
-    image.likes += 1;
+    image.likes++;
     image.likedBy.push(req.session.user._id);
     await image.save();
 
-    res.json({ message: 'Liked' });
+    res.json(image);
   } catch (err) {
-    console.error('Like error:', err);
-    res.status(500).json({ error: 'Failed to like image' });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to like image' });
   }
 });
 
-// Delete an image
+// Delete
 app.delete('/delete/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
     const image = await Image.findById(req.params.id);
     if (!image || image.userId !== req.session.user._id.toString()) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ message: 'Forbidden' });
     }
 
     await cloudinary.uploader.destroy(image.public_id);
@@ -230,44 +212,37 @@ app.delete('/delete/:id', async (req, res) => {
 
     res.json({ message: 'Image deleted' });
   } catch (err) {
-    console.error('Delete error:', err);
-    res.status(500).json({ error: 'Failed to delete image' });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete image' });
   }
 });
 
-// Comment on image
+// Comment
 app.post('/comment/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Comment text required' });
+  if (!text) return res.status(400).json({ message: 'Comment text required' });
 
   try {
     const image = await Image.findById(req.params.id);
-    if (!image) return res.status(404).json({ error: 'Image not found' });
+    if (!image) return res.status(404).json({ message: 'Image not found' });
 
     image.comments.push({ username: req.session.user.username, text });
     await image.save();
 
-    res.json({ message: 'Comment added' });
+    res.json({ message: 'Comment added', comments: image.comments });
   } catch (err) {
-    console.error('Comment error:', err);
-    res.status(500).json({ error: 'Failed to comment' });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to comment' });
   }
 });
 
-// Frontend
+// Serve frontend
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled server error:', err);
-  res.status(500).json({ error: 'Something went wrong' });
-});
-
-// Start server
 app.listen(PORT, () => {
   console.log(`🚀 PicPal running at http://localhost:${PORT}`);
 });

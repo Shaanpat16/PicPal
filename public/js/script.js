@@ -61,12 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentsContainer = document.createElement('div');
     commentsContainer.className = 'commentsContainer';
 
-    img.comments.forEach(comment => {
-      const commentEl = document.createElement('div');
-      commentEl.className = 'comment';
-      commentEl.textContent = `${comment.username}: ${comment.text}`;
-      commentsContainer.appendChild(commentEl);
-    });
+    if (img.comments && img.comments.length) {
+      img.comments.forEach(comment => {
+        const commentEl = document.createElement('div');
+        commentEl.className = 'comment';
+        commentEl.textContent = `${comment.username}: ${comment.text}`;
+        commentsContainer.appendChild(commentEl);
+      });
+    }
 
     const commentInput = document.createElement('input');
     commentInput.type = 'text';
@@ -81,12 +83,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const commentText = commentInput.value.trim();
       if (!commentText) return;
 
-      await fetch(`/comment/${img.id}`, {
+      const res = await fetch(`/comment/${img.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: commentText })
       });
-      loadStream();
+      if (res.ok) {
+        commentInput.value = '';
+        await loadStream();
+        await loadMyPhotos();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to post comment.');
+      }
     };
     commentsContainer.appendChild(commentBtn);
 
@@ -102,9 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
       delBtn.textContent = 'Delete';
       delBtn.className = 'deleteBtn';
       delBtn.onclick = async () => {
-        await fetch(`/delete/${img.id}`, { method: 'DELETE' });
-        loadStream();
-        loadMyPhotos();
+        const res = await fetch(`/delete/${img.id}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadStream();
+          await loadMyPhotos();
+        } else {
+          alert('Failed to delete image.');
+        }
       };
       card.appendChild(delBtn);
     } else {
@@ -163,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
       photoInput.value = '';
       await loadStream();
       await loadMyPhotos();
+      showTab('myPhotos');
     } else {
       const err = await res.json();
       alert(`Upload failed: ${err.message}`);
@@ -183,8 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   authActionBtn.addEventListener('click', async () => {
-    const username = usernameInput.value;
-    const password = passwordInput.value;
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
 
     if (!username || !password) return alert('Please fill in all fields.');
 
@@ -205,8 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'block';
       authModal.style.display = 'none';
+      await loadStream();
+      await loadMyPhotos();
     } else {
-      alert(result.message);
+      alert(result.message || 'Authentication failed.');
     }
   });
 
@@ -214,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetch('/logout', { method: 'POST' });
     loginBtn.style.display = 'block';
     logoutBtn.style.display = 'none';
+    await loadStream();
+    await loadMyPhotos();
   });
 
   loadStream();
