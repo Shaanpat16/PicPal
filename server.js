@@ -101,6 +101,7 @@ app.post('/logout', (req, res) => {
 });
 
 // Upload route with Cloudinary
+
 app.post('/upload', upload.single('photo'), async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
 
@@ -112,7 +113,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       .toBuffer();
 
     // Upload to Cloudinary
-    const streamUpload = () => {
+    const uploadStream = () => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: 'picpal_uploads' },
@@ -125,19 +126,21 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       });
     };
 
-    const result = await streamUpload();
+    const result = await uploadStream();
 
     const images = loadImages();
     const newImage = {
       id: uuid(),
       url: result.secure_url,
-      public_id: result.public_id, // in case you want to delete later
+      public_id: result.public_id,
       userId: req.session.user.id,
-      username: req.session.user.username, // Save the uploader's username
+      username: req.session.user.username,
       likes: 0,
+      likedBy: [], // NEW: track which users liked it
       comments: [],
       timestamp: new Date().toISOString()
     };
+
     images.unshift(newImage);
     saveImages(images);
 

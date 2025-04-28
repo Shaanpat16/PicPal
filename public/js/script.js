@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModal = document.getElementById('closeModal');
 
   let isLogin = true;
+  let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
   const showTab = (tabId) => {
     streamSection.style.display = 'none';
@@ -46,18 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
-  
+
     const imageEl = document.createElement('img');
     imageEl.src = img.url;
     imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
-  
+
     const usernameEl = document.createElement('div');
     usernameEl.className = 'username';
-    usernameEl.textContent = img.username || 'Anonymous'; // Display username
+    usernameEl.textContent = img.username || 'Anonymous';
     card.appendChild(usernameEl);
 
-    // Comment section
     const commentsContainer = document.createElement('div');
     commentsContainer.className = 'commentsContainer';
 
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: commentText })
       });
-      loadStream(); // Reload the stream to show the new comment
+      loadStream();
     };
     commentsContainer.appendChild(commentBtn);
 
@@ -94,8 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const likeDisplay = document.createElement('div');
     likeDisplay.textContent = `❤️ ${img.likes || 0}`;
+    likeDisplay.className = 'likeDisplay';
     card.appendChild(likeDisplay);
-  
+
     if (isMine) {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
@@ -108,15 +109,27 @@ document.addEventListener('DOMContentLoaded', () => {
       card.appendChild(delBtn);
     } else {
       const likeBtn = document.createElement('button');
-      likeBtn.textContent = 'Like';
+      likeBtn.textContent = likedImages.includes(img.id) ? 'Liked' : 'Like';
       likeBtn.className = 'likeBtn';
+      likeBtn.disabled = likedImages.includes(img.id);
+
       likeBtn.onclick = async () => {
-        await fetch(`/like/${img.id}`, { method: 'POST' });
-        likeDisplay.textContent = `❤️ ${img.likes + 1}`;
+        if (likedImages.includes(img.id)) return;
+
+        const res = await fetch(`/like/${img.id}`, { method: 'POST' });
+        if (res.ok) {
+          likedImages.push(img.id);
+          localStorage.setItem('likedImages', JSON.stringify(likedImages));
+          likeBtn.textContent = 'Liked';
+          likeBtn.disabled = true;
+
+          const updatedImage = await res.json();
+          likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
+        }
       };
       card.appendChild(likeBtn);
     }
-  
+
     return card;
   };
 
@@ -135,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
   };
 
-  // Upload preview + upload
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -155,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Event listeners for tabs
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
@@ -174,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = passwordInput.value;
 
     if (!username || !password) return alert('Please fill in all fields.');
-    
+
     const res = isLogin
       ? await fetch('/login', {
           method: 'POST',
