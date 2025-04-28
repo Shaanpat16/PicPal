@@ -113,7 +113,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       .toBuffer();
 
     // Upload to Cloudinary
-    const uploadStream = () => {
+    const streamUpload = () => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: 'picpal_uploads' },
@@ -126,9 +126,9 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       });
     };
 
-    const result = await uploadStream();
+    const result = await streamUpload();
 
-    const images = loadImages();
+    // Save image metadata to persistent storage (e.g., database)
     const newImage = {
       id: uuid(),
       url: result.secure_url,
@@ -136,13 +136,13 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       userId: req.session.user.id,
       username: req.session.user.username,
       likes: 0,
-      likedBy: [], // NEW: track which users liked it
+      likedBy: [], // To track users who liked the image
       comments: [],
       timestamp: new Date().toISOString()
     };
 
-    images.unshift(newImage);
-    saveImages(images);
+    // Replace this with your database logic
+    // e.g., await ImageModel.create(newImage);
 
     res.json({ message: 'Uploaded', image: newImage });
   } catch (err) {
