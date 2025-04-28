@@ -14,41 +14,34 @@
   <header>
     <div class="logo">PicPal</div>
     <nav>
-      <button id="streamTab" class="nav-icon"><i class="fas fa-home"></i></button>
-      <button id="myPhotosTab" class="nav-icon"><i class="fas fa-user"></i></button>
-      <button id="accountTab" class="nav-icon"><i class="fas fa-cog"></i></button>
-      <button id="logoutBtn" class="nav-icon" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
-      <button id="loginBtn" class="nav-icon"><i class="fas fa-sign-in-alt"></i> Login</button>
+      <button id="streamTab" class="nav-icon">Stream</button>
+      <button id="myPhotosTab" class="nav-icon">My Photos</button>
+      <button id="accountTab" class="nav-icon">Account</button>
+      <button id="logoutBtn" class="nav-icon" style="display: none;">Logout</button>
+      <button id="loginBtn" class="nav-icon">Login</button>
+      <button id="themeToggle" class="nav-icon">🌙</button>
     </nav>
   </header>
 
   <!-- Main Content -->
   <main>
-    <!-- Upload Section -->
     <section id="uploadSection">
-      <label for="photoInput" class="upload-label">
-        <i class="fas fa-plus-circle"></i> Add Photo
-      </label>
+      <label for="photoInput" class="upload-label">Add Photo</label>
       <input type="file" id="photoInput" accept="image/*" />
-      <div id="previewContainer" style="margin-top: 15px;">
-        <img id="photoPreview" style="max-width: 100%; max-height: 300px; display: none; border-radius: 10px; border: 1px solid #ccc;" />
+      <div id="previewContainer">
+        <img id="photoPreview" />
       </div>
       <button id="uploadBtn">Upload</button>
     </section>
 
-    <!-- Stream Section -->
     <section id="stream" class="tabContent">
-      <h2>Stream</h2>
       <div id="streamImages" class="photo-grid"></div>
     </section>
 
-    <!-- My Photos Section -->
     <section id="myPhotos" class="tabContent" style="display: none;">
-      <h2>My Photos</h2>
       <div id="myImages" class="photo-grid"></div>
     </section>
 
-    <!-- Account Section -->
     <section id="account" class="tabContent" style="display: none;">
       <h2>Account Settings</h2>
       <p>Manage your account settings here.</p>
