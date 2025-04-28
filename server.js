@@ -17,9 +17,9 @@ console.log(process.env.CLOUDINARY_API_SECRET); // Should print your API secret
 
 // Cloudinary config (replace with your actual credentials)
 cloudinary.config({
-  cloud_name: CLOUDINARY_CLOUD_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 const tempPath = path.join(__dirname, 'temp');
