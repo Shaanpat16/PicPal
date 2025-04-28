@@ -1,7 +1,5 @@
 // server.js
 
-// (All your initial setup here stays the same: imports, env checks, connection, schemas...)
-
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -179,15 +177,15 @@ app.post('/like/:id', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const image = await Image.findById(req.params.id);
+    const image = await Image.findById(req.params.id).select('_id likes likedBy');
     if (!image) return res.status(404).json({ message: 'Image not found' });
 
-    if (image.likedBy.includes(req.session.user._id)) {
+    if (image.likedBy.includes(req.session.user._id.toString())) {
       return res.status(400).json({ message: 'Already liked' });
     }
 
     image.likes++;
-    image.likedBy.push(req.session.user._id);
+    image.likedBy.push(req.session.user._id.toString());
     await image.save();
 
     res.json(image);
