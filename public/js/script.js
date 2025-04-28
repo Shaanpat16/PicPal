@@ -118,13 +118,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const res = await fetch(`/like/${img.id}`, { method: 'POST' });
         if (res.ok) {
+          const updatedImage = await res.json();
           likedImages.push(img.id);
           localStorage.setItem('likedImages', JSON.stringify(likedImages));
           likeBtn.textContent = 'Liked';
           likeBtn.disabled = true;
-
-          const updatedImage = await res.json();
           likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
+        } else {
+          const error = await res.json();
+          alert(error.error || 'Failed to like the image.');
         }
       };
       card.appendChild(likeBtn);
