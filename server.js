@@ -1,4 +1,4 @@
-// server.js (updated and cleaned)
+// server.js (cleaned & updated)
 
 const express = require('express');
 const multer = require('multer');
@@ -13,7 +13,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Check environment variables
+// Check required environment variables
 ['MONGODB_URI', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'SESSION_SECRET'].forEach(key => {
   if (!process.env[key]) {
     console.error(`❌ Missing environment variable: ${key}`);
@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3000;
   }
 });
 
-// Connect to MongoDB
+// MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => {
@@ -29,7 +29,7 @@ mongoose.connect(process.env.MONGODB_URI)
     process.exit(1);
   });
 
-// Define Models
+// Models
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
@@ -49,14 +49,14 @@ const imageSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Image = mongoose.model('Image', imageSchema);
 
-// Cloudinary Config
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Middleware
+// Middlewares
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -71,14 +71,16 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
 }));
 
-// Auth Routes
+// Routes
+
+// Sign Up
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
   try {
     const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: 'Username already exists' });
+    if (existingUser) return res.status(400).json({ error: 'Username already taken' });
 
     const user = new User({ username, password });
     await user.save();
@@ -90,9 +92,10 @@ app.post('/signup', async (req, res) => {
   }
 });
 
+// Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
   try {
     const user = await User.findOne({ username });
@@ -106,6 +109,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Logout
 app.post('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).json({ error: 'Logout failed' });
@@ -114,9 +118,9 @@ app.post('/logout', (req, res) => {
   });
 });
 
-// Upload Route
+// Upload Image
 app.post('/upload', upload.single('photo'), async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
@@ -126,11 +130,11 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       .toBuffer();
 
     const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
+      const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'picpal_uploads' },
         (error, result) => error ? reject(error) : resolve(result)
       );
-      streamifier.createReadStream(processedBuffer).pipe(stream);
+      streamifier.createReadStream(processedBuffer).pipe(uploadStream);
     });
 
     const newImage = new Image({
@@ -141,38 +145,40 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
     });
 
     await newImage.save();
-    res.json({ message: 'Uploaded', image: newImage });
+    res.json({ message: 'Image uploaded', image: newImage });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
 
-// Get All Images
+// Get all images
 app.get('/images', async (req, res) => {
   try {
     const images = await Image.find({}).sort({ timestamp: -1 });
     res.json(images);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
 
-// Get My Images
+// Get my images
 app.get('/my-images', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const images = await Image.find({ userId: req.session.user._id });
     res.json(images);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch your images' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
 
-// Like an Image
+// Like an image
 app.post('/like/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const image = await Image.findById(req.params.id);
@@ -188,13 +194,14 @@ app.post('/like/:id', async (req, res) => {
 
     res.json({ message: 'Liked' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to like image' });
   }
 });
 
-// Delete an Image
+// Delete an image
 app.delete('/delete/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const image = await Image.findById(req.params.id);
@@ -205,18 +212,19 @@ app.delete('/delete/:id', async (req, res) => {
     await cloudinary.uploader.destroy(image.public_id);
     await image.deleteOne();
 
-    res.json({ message: 'Deleted' });
+    res.json({ message: 'Image deleted' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to delete image' });
   }
 });
 
-// Comment on Image
+// Comment on image
 app.post('/comment/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Comment text is required' });
+  if (!text) return res.status(400).json({ error: 'Comment text required' });
 
   try {
     const image = await Image.findById(req.params.id);
@@ -225,24 +233,25 @@ app.post('/comment/:id', async (req, res) => {
     image.comments.push({ username: req.session.user.username, text });
     await image.save();
 
-    res.json({ message: 'Comment added!' });
+    res.json({ message: 'Comment added' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to comment' });
   }
 });
 
-// Serve Frontend
+// Frontend route
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-// Error Handler
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Something went wrong' });
 });
 
-// Start Server
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 PicPal running at http://localhost:${PORT}`);
 });
