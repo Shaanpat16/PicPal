@@ -144,6 +144,14 @@ input[type="file"] {
   color: white;
 }
 
+.imageCard .username {
+  font-size: 0.9rem;
+  color: #3182ce;
+  padding: 5px 10px;
+  text-align: center;
+  font-weight: bold;
+}
+
 .modal {
   display: none;
   position: fixed;

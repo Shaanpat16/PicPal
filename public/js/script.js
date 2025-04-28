@@ -52,6 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
     imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
   
+    const usernameEl = document.createElement('div');
+    usernameEl.className = 'username';
+    usernameEl.textContent = img.username || 'Anonymous'; // Display username
+    card.appendChild(usernameEl);
+  
     const likeDisplay = document.createElement('div');
     likeDisplay.textContent = `❤️ ${img.likes || 0}`;
     card.appendChild(likeDisplay);
@@ -78,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   
     return card;
-  };  
+  };
 
   const loadStream = async () => {
     const res = await fetch('/images');
@@ -170,4 +175,3 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStream();
   loadMyPhotos();
 });
-
