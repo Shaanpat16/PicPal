@@ -1,9 +1,10 @@
-// server.js (with MongoDB, updated)
+// server.js (updated and cleaned)
 
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const mongoose = require('mongoose');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
@@ -12,7 +13,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Check required environment variables
+// Check environment variables
 ['MONGODB_URI', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'SESSION_SECRET'].forEach(key => {
   if (!process.env[key]) {
     console.error(`❌ Missing environment variable: ${key}`);
@@ -21,20 +22,17 @@ const PORT = process.env.PORT || 3000;
 });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ Connected to MongoDB'))
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err);
-  process.exit(1);
-});
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
-// Define models
+// Define Models
 const userSchema = new mongoose.Schema({
-  username: { type: String, unique: true },
-  password: String,
+  username: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
 });
 
 const imageSchema = new mongoose.Schema({
@@ -51,24 +49,26 @@ const imageSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Image = mongoose.model('Image', imageSchema);
 
-// Configure Cloudinary
+// Cloudinary Config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Middlewares
+// Middleware
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
 }));
 
 // Auth Routes
@@ -109,6 +109,7 @@ app.post('/login', async (req, res) => {
 app.post('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).json({ error: 'Logout failed' });
+    res.clearCookie('connect.sid');
     res.json({ message: 'Logged out' });
   });
 });
@@ -201,8 +202,8 @@ app.delete('/delete/:id', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    await Image.findByIdAndDelete(req.params.id);
     await cloudinary.uploader.destroy(image.public_id);
+    await image.deleteOne();
 
     res.json({ message: 'Deleted' });
   } catch (err) {
@@ -235,12 +236,13 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-// Catch-all error handler
+// Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Something went wrong' });
 });
 
+// Start Server
 app.listen(PORT, () => {
   console.log(`🚀 PicPal running at http://localhost:${PORT}`);
 });
