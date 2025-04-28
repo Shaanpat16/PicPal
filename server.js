@@ -68,7 +68,7 @@ const ImageSchema = {
   username: String,
   comments: [{ username: String, text: String }],
   likes: { type: Number, default: 0 }
-});
+};
 
 // Auth routes
 app.post('/signup', (req, res) => {
