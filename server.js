@@ -185,6 +185,13 @@ app.delete('/delete/:id', async (req, res) => {
   res.json({ message: 'Deleted' });
 });
 
+const path = require('path');
+
+// Serve index.html for the root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`PicPal running at http://localhost:${PORT}`);
 });
