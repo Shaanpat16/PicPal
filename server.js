@@ -1,4 +1,4 @@
-// server.js (cleaned & updated)
+// server.js
 
 const express = require('express');
 const multer = require('multer');
@@ -21,13 +21,21 @@ const PORT = process.env.PORT || 3000;
   }
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
+// MongoDB connection with retry
+const connectWithRetry = () => {
+  console.log('🔄 Attempting MongoDB connection...');
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
+    console.error('❌ MongoDB connection error:', err.message);
+    console.log('⏳ Retrying in 5 seconds...');
+    setTimeout(connectWithRetry, 5000);
   });
+};
+connectWithRetry();
 
 // Models
 const userSchema = new mongoose.Schema({
@@ -49,7 +57,7 @@ const imageSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Image = mongoose.model('Image', imageSchema);
 
-// Cloudinary configuration
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -68,7 +76,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    crypto: { secret: process.env.SESSION_SECRET },
+    ttl: 14 * 24 * 60 * 60, // 14 days
+    autoRemove: 'native',
+  }),
 }));
 
 // Routes
@@ -87,7 +100,7 @@ app.post('/signup', async (req, res) => {
     req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Signed up' });
   } catch (err) {
-    console.error(err);
+    console.error('Signup error:', err);
     res.status(500).json({ error: 'Signup failed' });
   }
 });
@@ -104,7 +117,7 @@ app.post('/login', async (req, res) => {
     req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Logged in' });
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -112,7 +125,10 @@ app.post('/login', async (req, res) => {
 // Logout
 app.post('/logout', (req, res) => {
   req.session.destroy(err => {
-    if (err) return res.status(500).json({ error: 'Logout failed' });
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ error: 'Logout failed' });
+    }
     res.clearCookie('connect.sid');
     res.json({ message: 'Logged out' });
   });
@@ -125,14 +141,14 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
 
   try {
     const processedBuffer = await sharp(req.file.buffer)
-      .resize(800, 800)
-      .jpeg()
+      .resize(800, 800, { fit: sharp.fit.cover })
+      .jpeg({ quality: 80 })
       .toBuffer();
 
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'picpal_uploads' },
-        (error, result) => error ? reject(error) : resolve(result)
+        (error, result) => (error ? reject(error) : resolve(result))
       );
       streamifier.createReadStream(processedBuffer).pipe(uploadStream);
     });
@@ -147,7 +163,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
     await newImage.save();
     res.json({ message: 'Image uploaded', image: newImage });
   } catch (err) {
-    console.error(err);
+    console.error('Upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
@@ -158,7 +174,7 @@ app.get('/images', async (req, res) => {
     const images = await Image.find({}).sort({ timestamp: -1 });
     res.json(images);
   } catch (err) {
-    console.error(err);
+    console.error('Fetch images error:', err);
     res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
@@ -171,7 +187,7 @@ app.get('/my-images', async (req, res) => {
     const images = await Image.find({ userId: req.session.user._id });
     res.json(images);
   } catch (err) {
-    console.error(err);
+    console.error('Fetch my-images error:', err);
     res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
@@ -194,7 +210,7 @@ app.post('/like/:id', async (req, res) => {
 
     res.json({ message: 'Liked' });
   } catch (err) {
-    console.error(err);
+    console.error('Like error:', err);
     res.status(500).json({ error: 'Failed to like image' });
   }
 });
@@ -214,7 +230,7 @@ app.delete('/delete/:id', async (req, res) => {
 
     res.json({ message: 'Image deleted' });
   } catch (err) {
-    console.error(err);
+    console.error('Delete error:', err);
     res.status(500).json({ error: 'Failed to delete image' });
   }
 });
@@ -235,19 +251,19 @@ app.post('/comment/:id', async (req, res) => {
 
     res.json({ message: 'Comment added' });
   } catch (err) {
-    console.error(err);
+    console.error('Comment error:', err);
     res.status(500).json({ error: 'Failed to comment' });
   }
 });
 
-// Frontend route
+// Frontend
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-// Error handler
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
+  console.error('Unhandled server error:', err);
   res.status(500).json({ error: 'Something went wrong' });
 });
 
