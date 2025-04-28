@@ -1,18 +1,19 @@
+/* Global Styles */
 body {
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #f0f8ff;
+  background-color: #f0f8ff; /* Light baby blue */
   color: #333;
 }
 
+/* Header Styles */
 header {
-  background-color: #ffffff;
-  border-bottom: 2px solid #dbdbdb;
-  padding: 15px 20px;
+  background-color: #ffeb3b; /* Bright yellow for the header */
+  padding: 20px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -22,37 +23,38 @@ header {
 .logo {
   font-family: 'Pacifico', cursive;
   font-size: 2rem;
-  color: #000080;
+  color: #303f9f; /* Navy blue for logo */
+  padding: 10px;
 }
 
 nav {
   display: flex;
   gap: 15px;
-  position: absolute;
-  right: 20px;
 }
 
 nav button {
-  background: none;
+  background-color: #303f9f; /* Navy blue buttons */
+  color: white;
+  font-size: 1.2rem;
+  padding: 10px 20px;
   border: none;
-  color: #000080;
-  font-size: 1.4rem;
-  padding: 10px;
-  cursor: pointer;
   border-radius: 5px;
+  cursor: pointer;
   transition: background-color 0.3s;
 }
 
 nav button:hover {
-  background-color: #e0e0e0;
+  background-color: #1e3a8a; /* Darker blue on hover */
 }
 
+/* Main Layout */
 main {
   padding: 40px 20px;
   max-width: 1000px;
   margin: 0 auto;
 }
 
+/* Upload Section */
 #uploadSection {
   margin: 40px auto;
   text-align: center;
@@ -60,13 +62,13 @@ main {
   background-color: white;
   padding: 30px;
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .upload-label {
   display: block;
   font-size: 1.1rem;
-  color: #000080;
+  color: #303f9f; /* Navy blue */
   margin-bottom: 15px;
   cursor: pointer;
 }
@@ -76,9 +78,8 @@ input[type="file"] {
 }
 
 #uploadBtn {
-  background-color: #000080;
+  background-color: #303f9f;
   color: white;
-  border: none;
   padding: 12px 20px;
   font-size: 1.1rem;
   border-radius: 6px;
@@ -87,9 +88,10 @@ input[type="file"] {
 }
 
 #uploadBtn:hover {
-  background-color: #004085;
+  background-color: #1e3a8a; /* Darker blue on hover */
 }
 
+/* Photo Grid */
 .photo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -97,37 +99,117 @@ input[type="file"] {
   margin-top: 20px;
 }
 
+/* Image Card */
 .imageCard {
   background-color: white;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
+}
+
+.imageCard:hover {
+  transform: scale(1.05); /* Slight zoom effect on hover */
 }
 
 .imageCard img {
   width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
+/* User info */
 .username {
   font-weight: 600;
   margin-top: 10px;
+  font-size: 1rem;
+  color: #303f9f;
 }
 
+/* Buttons in Image Cards */
 .deleteBtn,
 .likeBtn {
   margin-top: 10px;
   padding: 6px 12px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   border: none;
-  background-color: #4caf50;
-  color: white;
+  border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
+.deleteBtn {
+  background-color: #ed4956; /* Red for delete button */
+  color: white;
+}
+
+.likeBtn {
+  background-color: #4caf50; /* Green for like button */
+  color: white;
+}
+
 .deleteBtn:hover,
 .likeBtn:hover {
-  background-color: #45a049;
+  background-color: #45a049; /* Darker colors on hover */
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 300px;
+  text-align: center;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+#authActionBtn {
+  background-color: #303f9f;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+}
+
+#authActionBtn:hover {
+  background-color: #1e3a8a; /* Darker blue on hover */
+}
+
+#toggleAuth {
+  margin-top: 10px;
+  color: #303f9f;
+  cursor: pointer;
 }
