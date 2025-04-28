@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.className = 'imageCard';
   
     const imageEl = document.createElement('img');
-    imageEl.src = img.url; // CHANGED from `/uploads/${img.filename}`
+    imageEl.src = img.url;
     imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
   
