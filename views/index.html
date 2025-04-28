@@ -10,18 +10,21 @@
   <link rel="icon" href="/favicon.png" />
 </head>
 <body>
+  <!-- Header -->
   <header>
     <div class="logo">PicPal</div>
     <nav>
       <button id="streamTab" class="nav-icon"><i class="fas fa-home"></i></button>
       <button id="myPhotosTab" class="nav-icon"><i class="fas fa-user"></i></button>
       <button id="accountTab" class="nav-icon"><i class="fas fa-cog"></i></button>
-      <button id="logoutBtn" class="nav-icon" style="display: none;"><i class="fas fa-sign-out-alt"></i></button>
+      <button id="logoutBtn" class="nav-icon" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
       <button id="loginBtn" class="nav-icon"><i class="fas fa-sign-in-alt"></i> Login</button>
     </nav>
   </header>
 
+  <!-- Main Content -->
   <main>
+    <!-- Upload Section -->
     <section id="uploadSection">
       <label for="photoInput" class="upload-label">
         <i class="fas fa-plus-circle"></i> Add Photo
@@ -33,20 +36,26 @@
       <button id="uploadBtn">Upload</button>
     </section>
 
+    <!-- Stream Section -->
     <section id="stream" class="tabContent">
+      <h2>Stream</h2>
       <div id="streamImages" class="photo-grid"></div>
     </section>
 
+    <!-- My Photos Section -->
     <section id="myPhotos" class="tabContent" style="display: none;">
+      <h2>My Photos</h2>
       <div id="myImages" class="photo-grid"></div>
     </section>
 
+    <!-- Account Section -->
     <section id="account" class="tabContent" style="display: none;">
       <h2>Account Settings</h2>
-      <p>Welcome to your account page.</p>
+      <p>Manage your account settings here.</p>
     </section>
   </main>
 
+  <!-- Authentication Modal -->
   <div id="authModal" class="modal">
     <div class="modal-content">
       <span id="closeModal" class="close">&times;</span>
