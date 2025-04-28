@@ -32,12 +32,13 @@ if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath);
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
 if (!fs.existsSync(IMAGES_FILE)) fs.writeFileSync(IMAGES_FILE, '[]');
 
-app.use(express.static('public'));
+// Set up static file serving for the 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: 'picpal-secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: true
 }));
@@ -185,9 +186,9 @@ app.delete('/delete/:id', async (req, res) => {
   res.json({ message: 'Deleted' });
 });
 
-// Serve index.html for the root route
+// Serve index.html from the views folder
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
 app.listen(PORT, () => {
