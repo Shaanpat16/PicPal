@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
+  const bioInput = document.getElementById('bio'); // Added for bio input
+  const profilePicInput = document.getElementById('profilePic'); // Added for profile picture input
   const closeModal = document.getElementById('closeModal');
 
   let isLogin = true;
@@ -61,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameEl = document.createElement('div');
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous';
+    usernameEl.onclick = () => {
+      window.location.href = `/user/${img.username}`;
+    };
     card.appendChild(usernameEl);
 
     const commentsContainer = document.createElement('div');
@@ -207,7 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
 
+    const bio = bioInput.value.trim(); // Added bio
+    const profilePic = profilePicInput.files[0]; // Added profile picture file
+
     if (!username || !password) return alert('Please fill in all fields.');
+
+    const formData = new FormData();
+    formData.append('bio', bio);
+    formData.append('profilePic', profilePic);
 
     const res = isLogin
       ? await fetch('/login', {
@@ -218,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : await fetch('/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, bio, profilePic })
         });
 
     const result = await res.json();
