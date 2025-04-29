@@ -18,10 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
+  const profilePicInput = document.getElementById('profilePic');
+  const bioInput = document.getElementById('bio');
   const closeModal = document.getElementById('closeModal');
+  const deleteAccountBtn = document.getElementById('deleteAccountBtn');
 
   let isLogin = true;
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
+  let currentUser = null;
 
   const showTab = (tabId) => {
     streamSection.style.display = 'none';
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameEl = document.createElement('div');
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous';
+    usernameEl.onclick = () => loadUserProfile(img.username);
     card.appendChild(usernameEl);
 
     const commentsContainer = document.createElement('div');
@@ -70,7 +75,17 @@ document.addEventListener('DOMContentLoaded', () => {
       img.comments.forEach(comment => {
         const commentEl = document.createElement('div');
         commentEl.className = 'comment';
-        commentEl.textContent = `${comment.username}: ${comment.text}`;
+
+        // Create a comment section with the profile picture next to it
+        const commentUserPic = document.createElement('img');
+        commentUserPic.src = comment.profilePic || 'default-profile-pic.png'; // Default image
+        commentUserPic.className = 'commentUserPic';
+        commentEl.appendChild(commentUserPic);
+
+        const commentText = document.createElement('span');
+        commentText.textContent = `${comment.username}: ${comment.text}`;
+        commentEl.appendChild(commentText);
+        
         commentsContainer.appendChild(commentEl);
       });
     }
@@ -170,6 +185,33 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
   };
 
+  const loadUserProfile = async (username) => {
+    const res = await fetch(`/profile/${username}`);
+    if (!res.ok) return alert('Failed to load profile.');
+    const userProfile = await res.json();
+
+    // Display user profile
+    document.getElementById('profilePic').src = userProfile.profilePic;
+    document.getElementById('bio').textContent = userProfile.bio;
+    document.getElementById('userPhotos').innerHTML = '';
+    userProfile.photos.forEach(photo => document.getElementById('userPhotos').appendChild(makeImageCard(photo, false)));
+
+    // Show the user's profile section
+    showTab('account');
+  };
+
+  const deleteAccount = async () => {
+    const res = await fetch('/delete-account', { method: 'DELETE' });
+    if (res.ok) {
+      alert('Account deleted successfully.');
+      window.location.href = '/';
+    } else {
+      alert('Failed to delete account.');
+    }
+  };
+
+  deleteAccountBtn.addEventListener('click', deleteAccount);
+
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -206,8 +248,16 @@ document.addEventListener('DOMContentLoaded', () => {
   authActionBtn.addEventListener('click', async () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
+    const profilePic = profilePicInput.files[0];
+    const bio = bioInput.value.trim();
 
     if (!username || !password) return alert('Please fill in all fields.');
+
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+    if (profilePic) formData.append('profilePic', profilePic);
+    if (bio) formData.append('bio', bio);
 
     const res = isLogin
       ? await fetch('/login', {
@@ -218,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : await fetch('/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, bio, profilePic })
         });
 
     const result = await res.json();

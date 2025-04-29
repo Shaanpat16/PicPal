@@ -42,9 +42,17 @@
       <div id="myImages" class="photo-grid"></div>
     </section>
 
+    <!-- Account Settings Section -->
     <section id="account" class="tabContent" style="display: none;">
       <h2>Account Settings</h2>
-      <p>Manage your account settings here.</p>
+      <form id="accountForm">
+        <label for="profilePic">Profile Picture</label>
+        <input type="file" id="profilePic" />
+        <label for="bio">Bio</label>
+        <textarea id="bio" placeholder="Add a bio..."></textarea>
+        <button type="submit" id="saveProfile">Save</button>
+        <button id="deleteAccountBtn" class="delete-btn">Delete Account</button>
+      </form>
     </section>
   </main>
 
