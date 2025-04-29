@@ -71,6 +71,14 @@ app.use(session({
   }),
 }));
 
+// Helper function to check if the user is logged in
+const isLoggedIn = (req, res, next) => {
+  if (!req.session.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  next();
+};
+
 // Auth routes
 
 // Signup
@@ -132,8 +140,7 @@ app.post('/logout', (req, res) => {
 });
 
 // Image upload
-app.post('/upload', upload.single('photo'), async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+app.post('/upload', isLoggedIn, upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
@@ -188,6 +195,85 @@ app.get('/user/:username', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch user profile' });
+  }
+});
+
+// Update Profile Picture
+app.post('/update-profile-picture', isLoggedIn, upload.single('profilePic'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+  try {
+    const processedBuffer = await sharp(req.file.buffer)
+      .resize(200, 200, { fit: sharp.fit.cover })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'picpal_profile_pics' },
+        (error, result) => (error ? reject(error) : resolve(result))
+      );
+      streamifier.createReadStream(processedBuffer).pipe(uploadStream);
+    });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { profilePic: result.secure_url },
+      { new: true }
+    );
+
+    req.session.user.profilePic = updatedUser.profilePic;
+
+    res.json({ message: 'Profile picture updated', profilePic: updatedUser.profilePic });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update profile picture' });
+  }
+});
+
+// Update Username and Password
+app.put('/update-account', isLoggedIn, async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10); // Hash new password
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { username, password: hashedPassword },
+      { new: true }
+    );
+
+    req.session.user.username = updatedUser.username;
+
+    res.json({ message: 'Account updated', username: updatedUser.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update account' });
+  }
+});
+
+// Delete Account
+app.delete('/delete-account', isLoggedIn, async (req, res) => {
+  try {
+    // Delete all user images
+    await Image.deleteMany({ userId: req.session.user._id });
+
+    // Delete the user account
+    await User.findByIdAndDelete(req.session.user._id);
+
+    req.session.destroy(err => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Failed to delete account' });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Account and all photos deleted' });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete account' });
   }
 });
 
