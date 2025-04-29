@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -28,6 +26,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
+  bio: String, // Added bio field
+  profilePictureUrl: String // Added profile picture URL field
 });
 
 const imageSchema = new mongoose.Schema({
@@ -35,6 +35,7 @@ const imageSchema = new mongoose.Schema({
   public_id: String,
   userId: String,
   username: String,
+  profilePicture: String, // Added profile picture to the image schema
   likes: { type: Number, default: 0 },
   likedBy: [String],
   comments: [{ username: String, text: String }],
@@ -71,16 +72,25 @@ app.use(session({
 
 // Auth routes
 app.post('/signup', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, bio, profilePicture } = req.body;
   if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
 
   try {
     const existingUser = await User.findOne({ username });
     if (existingUser) return res.status(400).json({ message: 'Username already taken' });
 
-    const user = new User({ username, password });
+    // Upload profile picture to Cloudinary
+    let profilePictureUrl = '';
+    if (profilePicture) {
+      const result = await cloudinary.uploader.upload(profilePicture, {
+        folder: 'picpal_profiles',
+      });
+      profilePictureUrl = result.secure_url;
+    }
+
+    const user = new User({ username, password, bio, profilePictureUrl });
     await user.save();
-    req.session.user = { _id: user._id, username: user.username };
+    req.session.user = { _id: user._id, username: user.username, bio: user.bio, profilePictureUrl: user.profilePictureUrl };
     res.json({ message: 'Signed up' });
   } catch (err) {
     console.error(err);
@@ -96,7 +106,7 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ username });
     if (!user || user.password !== password) return res.status(401).json({ message: 'Invalid credentials' });
 
-    req.session.user = { _id: user._id, username: user.username };
+    req.session.user = { _id: user._id, username: user.username, bio: user.bio, profilePictureUrl: user.profilePictureUrl };
     res.json({ message: 'Logged in' });
   } catch (err) {
     console.error(err);
@@ -139,6 +149,7 @@ app.post('/upload', upload.single('photo'), async (req, res) => {
       public_id: result.public_id,
       userId: req.session.user._id,
       username: req.session.user.username,
+      profilePicture: req.session.user.profilePictureUrl, // Saving profile picture of the uploader
     });
 
     await newImage.save();
@@ -160,15 +171,24 @@ app.get('/images', async (req, res) => {
   }
 });
 
-app.get('/my-images', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
-
+// Get user profile
+app.get('/user/:username', async (req, res) => {
+  const { username } = req.params;
   try {
-    const images = await Image.find({ userId: req.session.user._id }).sort({ timestamp: -1 });
-    res.json(images);
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const images = await Image.find({ userId: user._id });
+
+    res.json({
+      username: user.username,
+      bio: user.bio,
+      profilePictureUrl: user.profilePictureUrl,
+      images,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Failed to fetch my images' });
+    res.status(500).json({ message: 'Failed to fetch user profile' });
   }
 });
 
@@ -192,26 +212,6 @@ app.post('/like/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to like image' });
-  }
-});
-
-// Delete
-app.delete('/delete/:id', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
-
-  try {
-    const image = await Image.findById(req.params.id);
-    if (!image || image.userId !== req.session.user._id.toString()) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-
-    await cloudinary.uploader.destroy(image.public_id);
-    await image.deleteOne();
-
-    res.json({ message: 'Image deleted' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to delete image' });
   }
 });
 
