@@ -18,8 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
-  const bioInput = document.getElementById('bio'); // For bio
-  const profilePicInput = document.getElementById('profilePic'); // For profile picture input
   const closeModal = document.getElementById('closeModal');
 
   let isLogin = true;
@@ -63,9 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameEl = document.createElement('div');
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous';
-    usernameEl.onclick = () => {
-      window.location.href = `/user/${img.username}`;
-    };
     card.appendChild(usernameEl);
 
     const commentsContainer = document.createElement('div');
@@ -195,44 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Google Login button functionality
-  const handleGoogleLogin = async (response) => {
-    const token = response.credential;
-    const res = await fetch('/google-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
-
-    const result = await res.json();
-    if (res.ok) {
-      loginBtn.style.display = 'none';
-      logoutBtn.style.display = 'block';
-      authModal.style.display = 'none';
-      await loadStream();
-      await loadMyPhotos();
-    } else {
-      alert(result.message || 'Authentication failed.');
-    }
-  };
-
-  const googleLoginBtn = document.getElementById('google-login-btn');
-  googleLoginBtn.addEventListener('click', () => {
-    google.accounts.id.prompt();
-  });
-
-  // Google Sign-In API initialization
-  google.accounts.id.initialize({
-    client_id: 'YOUR_GOOGLE_CLIENT_ID',
-    callback: handleGoogleLogin,
-  });
-
-  // Google login button
-  google.accounts.id.renderButton(
-    googleLoginBtn, 
-    { theme: 'outline', size: 'large' }
-  );
-
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
@@ -250,14 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
 
-    const bio = bioInput.value.trim(); // Added bio
-    const profilePic = profilePicInput.files[0]; // Added profile picture file
-
     if (!username || !password) return alert('Please fill in all fields.');
-
-    const formData = new FormData();
-    formData.append('bio', bio);
-    formData.append('profilePic', profilePic);
 
     const res = isLogin
       ? await fetch('/login', {
@@ -268,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : await fetch('/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, bio, profilePic })
+          body: JSON.stringify({ username, password })
         });
 
     const result = await res.json();
