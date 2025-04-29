@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamSection = document.getElementById('stream');
   const myPhotosSection = document.getElementById('myPhotos');
   const accountSection = document.getElementById('account');
+  const searchSection = document.getElementById('searchSection'); // For search bar
+  const searchUsernameInput = document.getElementById('searchUsername');
+  const searchBtn = document.getElementById('searchBtn');
+  const profilePageSection = document.getElementById('profilePageSection');
+  const profileUsername = document.getElementById('profileUsername');
+  const profileBio = document.getElementById('profileBio');
+  const profileImageGrid = document.getElementById('profileImageGrid');
   const uploadBtn = document.getElementById('uploadBtn');
   const photoInput = document.getElementById('photoInput');
   const streamImages = document.getElementById('streamImages');
@@ -19,19 +26,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
-  
+
   let isLogin = true;
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
+  // Show profile page when clicked on a username
+  const showProfilePage = (user) => {
+    profilePageSection.style.display = 'block';
+    profileUsername.textContent = user.username;
+    profileBio.textContent = user.bio;
+    profileImageGrid.innerHTML = '';
+    
+    // Display user images
+    user.images.forEach(img => {
+      const imageCard = document.createElement('div');
+      imageCard.className = 'imageCard';
+      const imageEl = document.createElement('img');
+      imageEl.src = img.url;
+      imageEl.alt = 'User Photo';
+      imageCard.appendChild(imageEl);
+      profileImageGrid.appendChild(imageCard);
+    });
+  };
+
+  // Search user by username
+  searchBtn.addEventListener('click', async () => {
+    const username = searchUsernameInput.value.trim();
+    if (!username) return alert('Please enter a username');
+
+    const res = await fetch(`/user/${username}`);
+    if (res.ok) {
+      const user = await res.json();
+      showProfilePage(user);
+    } else {
+      alert('User not found');
+    }
+  });
+
+  // Function to show tabs (stream, myPhotos, account)
   const showTab = (tabId) => {
     streamSection.style.display = 'none';
     myPhotosSection.style.display = 'none';
     accountSection.style.display = 'none';
+    searchSection.style.display = 'none';  // Hide search section
+    profilePageSection.style.display = 'none';  // Hide profile section
+    
     if (tabId === 'stream') streamSection.style.display = 'block';
     if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
     if (tabId === 'account') accountSection.style.display = 'block';
+    if (tabId === 'search') searchSection.style.display = 'block';
   };
 
+  // Update the authentication modal
   const updateAuthText = () => {
     authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
     authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
@@ -44,11 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Function to create image cards with comment sections
+  // Create image card with comment sections
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
-
     const imageEl = document.createElement('img');
     imageEl.src = img.url;
     imageEl.alt = 'Uploaded photo';
@@ -59,9 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameEl.textContent = img.username || 'Anonymous';
     card.appendChild(usernameEl);
 
+    // Comments section
     const commentsContainer = document.createElement('div');
     commentsContainer.className = 'commentsContainer';
-
     if (img.comments && img.comments.length) {
       img.comments.forEach(comment => {
         const commentEl = document.createElement('div');
@@ -108,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
     likeDisplay.className = 'likeDisplay';
     card.appendChild(likeDisplay);
 
+    // Like functionality
     if (isMine) {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
@@ -166,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
   };
 
+  // Handle upload
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
