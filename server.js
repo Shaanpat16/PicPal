@@ -1,5 +1,4 @@
-// server.js
-
+// Import necessary modules
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -28,6 +27,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
+  bio: { type: String, default: '' },
+  profilePic: { type: String, default: '' }, // Add profilePic to store image URL
 });
 
 const imageSchema = new mongoose.Schema({
@@ -215,24 +216,82 @@ app.delete('/delete/:id', async (req, res) => {
   }
 });
 
-// Comment
-app.post('/comment/:id', async (req, res) => {
+// Update Profile Picture
+app.post('/update-profile-picture', upload.single('profilePic'), async (req, res) => {
   if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ message: 'Comment text required' });
-
   try {
-    const image = await Image.findById(req.params.id);
-    if (!image) return res.status(404).json({ message: 'Image not found' });
+    const processedBuffer = await sharp(req.file.buffer)
+      .resize(200, 200, { fit: sharp.fit.cover })
+      .jpeg({ quality: 80 })
+      .toBuffer();
 
-    image.comments.push({ username: req.session.user.username, text });
-    await image.save();
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'picpal_profile_pics' },
+        (error, result) => (error ? reject(error) : resolve(result))
+      );
+      streamifier.createReadStream(processedBuffer).pipe(uploadStream);
+    });
 
-    res.json({ message: 'Comment added', comments: image.comments });
+    const updatedUser = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { profilePic: result.secure_url },
+      { new: true }
+    );
+
+    req.session.user.profilePic = updatedUser.profilePic;
+
+    res.json({ message: 'Profile picture updated', profilePic: updatedUser.profilePic });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Failed to comment' });
+    res.status(500).json({ message: 'Failed to update profile picture' });
+  }
+});
+
+// Update Username and Password
+app.put('/update-account', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { username, password },
+      { new: true }
+    );
+
+    req.session.user.username = updatedUser.username;
+
+    res.json({ message: 'Account updated', username: updatedUser.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update account' });
+  }
+});
+
+// Delete Account
+app.delete('/delete-account', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    // Delete all user images
+    await Image.deleteMany({ userId: req.session.user._id });
+
+    // Delete the user account
+    await User.findByIdAndDelete(req.session.user._id);
+
+    req.session.destroy(err => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Failed to delete account' });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Account and all photos deleted' });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete account' });
   }
 });
 
