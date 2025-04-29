@@ -6,13 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamSection = document.getElementById('stream');
   const myPhotosSection = document.getElementById('myPhotos');
   const accountSection = document.getElementById('account');
-  const searchSection = document.getElementById('searchSection'); // For search bar
+  const searchSection = document.getElementById('searchSection');
   const searchUsernameInput = document.getElementById('searchUsername');
-  const searchBtn = document.getElementById('searchBtn');
-  const profilePageSection = document.getElementById('profilePageSection');
+  const searchBtn = document.getElementById('searchUserBtn');
+  const profilePageSection = document.getElementById('userProfileSection');
   const profileUsername = document.getElementById('profileUsername');
-  const profileBio = document.getElementById('profileBio');
-  const profileImageGrid = document.getElementById('profileImageGrid');
+  const profileBio = document.getElementById('userBio');
+  const profileImageGrid = document.getElementById('userImages');
   const uploadBtn = document.getElementById('uploadBtn');
   const photoInput = document.getElementById('photoInput');
   const streamImages = document.getElementById('streamImages');
@@ -22,12 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const authModal = document.getElementById('authModal');
   const authTitle = document.getElementById('authTitle');
   const authActionBtn = document.getElementById('authActionBtn');
+  const signUpActionBtn = document.getElementById('signUpActionBtn');
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  let isLogin = true; // default to login page
+  let isLogin = true;
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
   // Show profile page when clicked on a username
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     profileUsername.textContent = user.username;
     profileBio.textContent = user.bio;
     profileImageGrid.innerHTML = '';
-    
+
     // Display user images
     user.images.forEach(img => {
       const imageCard = document.createElement('div');
@@ -68,9 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
     streamSection.style.display = 'none';
     myPhotosSection.style.display = 'none';
     accountSection.style.display = 'none';
-    searchSection.style.display = 'none';  // Hide search section
-    profilePageSection.style.display = 'none';  // Hide profile section
-    
+    searchSection.style.display = 'none';
+    profilePageSection.style.display = 'none';
+
     if (tabId === 'stream') streamSection.style.display = 'block';
     if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
     if (tabId === 'account') accountSection.style.display = 'block';
@@ -81,9 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateAuthText = () => {
     authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
     authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
+    signUpActionBtn.style.display = isLogin ? 'none' : 'block';
     toggleAuth.innerHTML = isLogin
       ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
       : "Already have an account? <span class='switchAuth'>Login</span>";
+
     document.querySelector('.switchAuth').addEventListener('click', () => {
       isLogin = !isLogin;
       updateAuthText();
@@ -233,17 +236,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  streamTab.addEventListener('click', () => showTab('stream'));
-  myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
-  accountTab.addEventListener('click', () => showTab('account'));
-
+  // Login and Sign up Logic
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
   });
 
-  closeModal.addEventListener('click', () => {
-    authModal.style.display = 'none';
+  signUpActionBtn.addEventListener('click', async () => {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!username || !password) return alert('Please fill in all fields.');
+
+    const res = await fetch('/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const result = await res.json();
+    if (res.ok) {
+      alert('Signed up successfully!');
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'block';
+      authModal.style.display = 'none';
+      await loadStream();
+      await loadMyPhotos();
+    } else {
+      alert(result.message || 'Signup failed.');
+    }
   });
 
   authActionBtn.addEventListener('click', async () => {
@@ -252,17 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!username || !password) return alert('Please fill in all fields.');
 
-    const res = isLogin
-      ? await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        })
-      : await fetch('/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
 
     const result = await res.json();
     if (res.ok) {
