@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
-  const bioInput = document.getElementById('bio'); // Added for bio input
-  const profilePicInput = document.getElementById('profilePic'); // Added for profile picture input
+  const bioInput = document.getElementById('bio'); // For bio
+  const profilePicInput = document.getElementById('profilePic'); // For profile picture input
   const closeModal = document.getElementById('closeModal');
 
   let isLogin = true;
