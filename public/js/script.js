@@ -1,292 +1,241 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // Sections and buttons
-  const streamTab = document.getElementById('streamTab');
-  const myPhotosTab = document.getElementById('myPhotosTab');
-  const accountTab = document.getElementById('accountTab');
-  const streamSection = document.getElementById('stream');
-  const myPhotosSection = document.getElementById('myPhotos');
-  const accountSection = document.getElementById('account');
-  const searchSection = document.getElementById('searchSection'); // For search bar
-  const searchUsernameInput = document.getElementById('searchUsername');
-  const searchBtn = document.getElementById('searchBtn');
-  const profilePageSection = document.getElementById('profilePageSection');
-  const profileUsername = document.getElementById('profileUsername');
-  const profileBio = document.getElementById('profileBio');
-  const profileImageGrid = document.getElementById('profileImageGrid');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const photoInput = document.getElementById('photoInput');
-  const streamImages = document.getElementById('streamImages');
-  const myImages = document.getElementById('myImages');
-  const loginBtn = document.getElementById('loginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const authModal = document.getElementById('authModal');
-  const authTitle = document.getElementById('authTitle');
-  const authActionBtn = document.getElementById('authActionBtn');
-  const toggleAuth = document.getElementById('toggleAuth');
-  const usernameInput = document.getElementById('username');
-  const passwordInput = document.getElementById('password');
-  const closeModal = document.getElementById('closeModal');
+// Import necessary modules
+const express = require('express');
+const multer = require('multer');
+const sharp = require('sharp');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const mongoose = require('mongoose');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+require('dotenv').config();
 
-  let isLogin = true; // default to login page
-  let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  // Show profile page when clicked on a username
-  const showProfilePage = (user) => {
-    profilePageSection.style.display = 'block';
-    profileUsername.textContent = user.username;
-    profileBio.textContent = user.bio;
-    profileImageGrid.innerHTML = '';
-    
-    // Display user images
-    user.images.forEach(img => {
-      const imageCard = document.createElement('div');
-      imageCard.className = 'imageCard';
-      const imageEl = document.createElement('img');
-      imageEl.src = img.url;
-      imageEl.alt = 'User Photo';
-      imageCard.appendChild(imageEl);
-      profileImageGrid.appendChild(imageCard);
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('✅ Connected to MongoDB'))
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1);
+});
+
+// Models
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  bio: { type: String, default: '' },
+  profilePic: { type: String, default: '' }, // Add profilePic to store image URL
+});
+
+const imageSchema = new mongoose.Schema({
+  url: String,
+  public_id: String,
+  userId: String,
+  username: String,
+  likes: { type: Number, default: 0 },
+  likedBy: [String],
+  comments: [{ username: String, text: String }],
+  timestamp: { type: Date, default: Date.now },
+});
+
+const User = mongoose.model('User', userSchema);
+const Image = mongoose.model('Image', imageSchema);
+
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Middlewares
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+app.use(express.static('public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    crypto: { secret: process.env.SESSION_SECRET },
+  }),
+}));
+
+// Auth routes
+app.post('/signup', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
+
+  try {
+    const existingUser = await User.findOne({ username });
+    if (existingUser) return res.status(400).json({ message: 'Username already taken' });
+
+    const user = new User({ username, password });
+    await user.save();
+    req.session.user = { _id: user._id, username: user.username };
+    res.json({ message: 'Signed up' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Signup failed' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user || user.password !== password) return res.status(401).json({ message: 'Invalid credentials' });
+
+    req.session.user = { _id: user._id, username: user.username };
+    res.json({ message: 'Logged in' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+app.post('/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ message: 'Logged out' });
+  });
+});
+
+// Image upload
+app.post('/upload', upload.single('photo'), async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+  try {
+    const processedBuffer = await sharp(req.file.buffer)
+      .resize(800, 800, { fit: sharp.fit.cover })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'picpal_uploads' },
+        (error, result) => (error ? reject(error) : resolve(result))
+      );
+      streamifier.createReadStream(processedBuffer).pipe(uploadStream);
     });
-  };
 
-  // Search user by username
-  searchBtn.addEventListener('click', async () => {
-    const username = searchUsernameInput.value.trim();
-    if (!username) return alert('Please enter a username');
-
-    const res = await fetch(`/user/${username}`);
-    if (res.ok) {
-      const user = await res.json();
-      showProfilePage(user);
-    } else {
-      alert('User not found');
-    }
-  });
-
-  // Function to show tabs (stream, myPhotos, account)
-  const showTab = (tabId) => {
-    streamSection.style.display = 'none';
-    myPhotosSection.style.display = 'none';
-    accountSection.style.display = 'none';
-    searchSection.style.display = 'none';  // Hide search section
-    profilePageSection.style.display = 'none';  // Hide profile section
-    
-    if (tabId === 'stream') streamSection.style.display = 'block';
-    if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
-    if (tabId === 'account') accountSection.style.display = 'block';
-    if (tabId === 'search') searchSection.style.display = 'block';
-  };
-
-  // Update the authentication modal
-  const updateAuthText = () => {
-    authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
-    authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
-    toggleAuth.innerHTML = isLogin
-      ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
-      : "Already have an account? <span class='switchAuth'>Login</span>";
-    document.querySelector('.switchAuth').addEventListener('click', () => {
-      isLogin = !isLogin;
-      updateAuthText();
+    const newImage = new Image({
+      url: result.secure_url,
+      public_id: result.public_id,
+      userId: req.session.user._id,
+      username: req.session.user.username,
     });
-  };
 
-  // Function to make image card with comment sections
-  const makeImageCard = (img, isMine) => {
-    const card = document.createElement('div');
-    card.className = 'imageCard';
-    const imageEl = document.createElement('img');
-    imageEl.src = img.url;
-    imageEl.alt = 'Uploaded photo';
-    card.appendChild(imageEl);
+    await newImage.save();
+    res.json({ message: 'Image uploaded', image: newImage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Upload failed' });
+  }
+});
 
-    const usernameEl = document.createElement('div');
-    usernameEl.className = 'username';
-    usernameEl.textContent = img.username || 'Anonymous';
-    card.appendChild(usernameEl);
+// Fetch images
+app.get('/images', async (req, res) => {
+  try {
+    const images = await Image.find({}).sort({ timestamp: -1 });
+    res.json(images);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch images' });
+  }
+});
 
-    // Comments section
-    const commentsContainer = document.createElement('div');
-    commentsContainer.className = 'commentsContainer';
-    if (img.comments && img.comments.length) {
-      img.comments.forEach(comment => {
-        const commentEl = document.createElement('div');
-        commentEl.className = 'comment';
-        commentEl.textContent = `${comment.username}: ${comment.text}`;
-        commentsContainer.appendChild(commentEl);
-      });
+app.get('/my-images', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const images = await Image.find({ userId: req.session.user._id }).sort({ timestamp: -1 });
+    res.json(images);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch my images' });
+  }
+});
+
+// Like
+app.post('/like/:id', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const image = await Image.findById(req.params.id).select('_id likes likedBy');
+    if (!image) return res.status(404).json({ message: 'Image not found' });
+
+    if (image.likedBy.includes(req.session.user._id.toString())) {
+      return res.status(400).json({ message: 'Already liked' });
     }
 
-    const commentInput = document.createElement('input');
-    commentInput.type = 'text';
-    commentInput.placeholder = 'Add a comment...';
-    commentInput.className = 'commentInput';
-    commentsContainer.appendChild(commentInput);
+    image.likes++;
+    image.likedBy.push(req.session.user._id.toString());
+    await image.save();
 
-    const commentBtn = document.createElement('button');
-    commentBtn.textContent = 'Post Comment';
-    commentBtn.className = 'commentBtn';
-    commentBtn.onclick = async () => {
-      const commentText = commentInput.value.trim();
-      if (!commentText) return;
+    res.json(image);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to like image' });
+  }
+});
 
-      const res = await fetch(`/comment/${encodeURIComponent(img._id)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: commentText })
-      });
+// Delete
+app.delete('/delete/:id', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
-      if (res.ok) {
-        commentInput.value = '';
-        await loadStream();
-        await loadMyPhotos();
-      } else {
-        const err = await res.json();
-        alert(err.message || 'Failed to post comment.');
-      }
-    };
-    commentsContainer.appendChild(commentBtn);
-
-    card.appendChild(commentsContainer);
-
-    const likeDisplay = document.createElement('div');
-    likeDisplay.textContent = `❤️ ${img.likes || 0}`;
-    likeDisplay.className = 'likeDisplay';
-    card.appendChild(likeDisplay);
-
-    // Like functionality
-    if (isMine) {
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Delete';
-      delBtn.className = 'deleteBtn';
-      delBtn.onclick = async () => {
-        const res = await fetch(`/delete/${encodeURIComponent(img._id)}`, { method: 'DELETE' });
-        if (res.ok) {
-          await loadStream();
-          await loadMyPhotos();
-        } else {
-          alert('Failed to delete image.');
-        }
-      };
-      card.appendChild(delBtn);
-    } else {
-      const likeBtn = document.createElement('button');
-      likeBtn.textContent = likedImages.includes(img._id) ? 'Liked' : 'Like';
-      likeBtn.className = 'likeBtn';
-      likeBtn.disabled = likedImages.includes(img._id);
-
-      likeBtn.onclick = async () => {
-        if (likedImages.includes(img._id)) return;
-
-        const res = await fetch(`/like/${encodeURIComponent(img._id)}`, { method: 'POST' });
-        if (res.ok) {
-          const updatedImage = await res.json();
-          likedImages.push(img._id);
-          localStorage.setItem('likedImages', JSON.stringify(likedImages));
-          likeBtn.textContent = 'Liked';
-          likeBtn.disabled = true;
-          likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
-        } else {
-          const error = await res.json();
-          alert(error.message || 'Failed to like the image.');
-        }
-      };
-      card.appendChild(likeBtn);
+  try {
+    const image = await Image.findById(req.params.id);
+    if (!image || image.userId !== req.session.user._id.toString()) {
+      return res.status(403).json({ message: 'Forbidden' });
     }
 
-    return card;
-  };
+    await cloudinary.uploader.destroy(image.public_id);
+    await image.deleteOne();
 
-  const loadStream = async () => {
-    const res = await fetch('/images');
-    if (!res.ok) return;
-    const images = await res.json();
-    streamImages.innerHTML = '';
-    images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
-  };
+    res.json({ message: 'Image deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete image' });
+  }
+});
 
-  const loadMyPhotos = async () => {
-    const res = await fetch('/my-images');
-    if (!res.ok) return;
-    const images = await res.json();
-    myImages.innerHTML = '';
-    images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
-  };
+// Search for users
+app.get('/user/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-  // Handle upload
-  uploadBtn.addEventListener('click', async () => {
-    const file = photoInput.files[0];
-    if (!file) return alert('Please select a file.');
+    const images = await Image.find({ userId: user._id });
 
-    const formData = new FormData();
-    formData.append('photo', file);
+    res.json({ username: user.username, bio: user.bio, profilePic: user.profilePic, images });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch user profile' });
+  }
+});
 
-    const res = await fetch('/upload', { method: 'POST', body: formData });
-    if (res.ok) {
-      alert('Photo uploaded!');
-      photoInput.value = '';
-      await loadStream();
-      await loadMyPhotos();
-      showTab('myPhotos');
-    } else {
-      const err = await res.json();
-      alert(`Upload failed: ${err.message}`);
-    }
-  });
+// Serve frontend
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/views/index.html');
+});
 
-  streamTab.addEventListener('click', () => showTab('stream'));
-  myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
-  accountTab.addEventListener('click', () => showTab('account'));
-
-  loginBtn.addEventListener('click', () => {
-    authModal.style.display = 'block';
-    updateAuthText();
-  });
-
-  closeModal.addEventListener('click', () => {
-    authModal.style.display = 'none';
-  });
-
-  authActionBtn.addEventListener('click', async () => {
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!username || !password) return alert('Please fill in all fields.');
-
-    const res = isLogin
-      ? await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        })
-      : await fetch('/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-    const result = await res.json();
-    if (res.ok) {
-      loginBtn.style.display = 'none';
-      logoutBtn.style.display = 'block';
-      authModal.style.display = 'none';
-      await loadStream();
-      await loadMyPhotos();
-    } else {
-      alert(result.message || 'Authentication failed.');
-    }
-  });
-
-  logoutBtn.addEventListener('click', async () => {
-    await fetch('/logout', { method: 'POST' });
-    loginBtn.style.display = 'block';
-    logoutBtn.style.display = 'none';
-    likedImages = [];
-    localStorage.removeItem('likedImages');
-    await loadStream();
-    await loadMyPhotos();
-  });
-
-  loadStream();
-  loadMyPhotos();
-  showTab('stream');
+app.listen(PORT, () => {
+  console.log(`🚀 PicPal running at http://localhost:${PORT}`);
 });
