@@ -19,11 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
-
-  let isLogin = true;  // Track whether it's login or signup
+  
+  let isLogin = true;
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
-  // Show appropriate tab
   const showTab = (tabId) => {
     streamSection.style.display = 'none';
     myPhotosSection.style.display = 'none';
@@ -33,21 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabId === 'account') accountSection.style.display = 'block';
   };
 
-  // Update modal to show login/signup
   const updateAuthText = () => {
     authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
     authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
     toggleAuth.innerHTML = isLogin
       ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
       : "Already have an account? <span class='switchAuth'>Login</span>";
-
     document.querySelector('.switchAuth').addEventListener('click', () => {
       isLogin = !isLogin;
       updateAuthText();
     });
   };
 
-  // Handle image card creation
+  // Function to create image cards with comment sections
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
@@ -61,6 +58,50 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous';
     card.appendChild(usernameEl);
+
+    const commentsContainer = document.createElement('div');
+    commentsContainer.className = 'commentsContainer';
+
+    if (img.comments && img.comments.length) {
+      img.comments.forEach(comment => {
+        const commentEl = document.createElement('div');
+        commentEl.className = 'comment';
+        commentEl.textContent = `${comment.username}: ${comment.text}`;
+        commentsContainer.appendChild(commentEl);
+      });
+    }
+
+    const commentInput = document.createElement('input');
+    commentInput.type = 'text';
+    commentInput.placeholder = 'Add a comment...';
+    commentInput.className = 'commentInput';
+    commentsContainer.appendChild(commentInput);
+
+    const commentBtn = document.createElement('button');
+    commentBtn.textContent = 'Post Comment';
+    commentBtn.className = 'commentBtn';
+    commentBtn.onclick = async () => {
+      const commentText = commentInput.value.trim();
+      if (!commentText) return;
+
+      const res = await fetch(`/comment/${encodeURIComponent(img._id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: commentText })
+      });
+
+      if (res.ok) {
+        commentInput.value = '';
+        await loadStream();
+        await loadMyPhotos();
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to post comment.');
+      }
+    };
+    commentsContainer.appendChild(commentBtn);
+
+    card.appendChild(commentsContainer);
 
     const likeDisplay = document.createElement('div');
     likeDisplay.textContent = `❤️ ${img.likes || 0}`;
@@ -109,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   };
 
-  // Load the stream
   const loadStream = async () => {
     const res = await fetch('/images');
     if (!res.ok) return;
@@ -118,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
   };
 
-  // Load the user's photos
   const loadMyPhotos = async () => {
     const res = await fetch('/my-images');
     if (!res.ok) return;
@@ -127,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
   };
 
-  // Handle file upload
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -148,23 +186,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Switch tabs between Stream, My Photos, and Account
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
 
-  // Open authentication modal on login button click
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
   });
 
-  // Close modal
   closeModal.addEventListener('click', () => {
     authModal.style.display = 'none';
   });
 
-  // Handle the login/signup form submission
   authActionBtn.addEventListener('click', async () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
@@ -195,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Logout
   logoutBtn.addEventListener('click', async () => {
     await fetch('/logout', { method: 'POST' });
     loginBtn.style.display = 'block';
