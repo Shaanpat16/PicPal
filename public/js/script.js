@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  let isLogin = true;
+  let isLogin = true; // default to login page
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
   // Show profile page when clicked on a username
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Create image card with comment sections
+  // Function to make image card with comment sections
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
