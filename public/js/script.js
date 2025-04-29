@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  let isLogin = true;
+  let isLogin = true; // default to login page
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
   // Show profile page when clicked on a username
