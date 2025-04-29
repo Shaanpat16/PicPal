@@ -28,8 +28,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
-  profilePic: String,  // New field for profile picture URL
-  bio: String,         // New field for user bio
 });
 
 const imageSchema = new mongoose.Schema({
@@ -73,14 +71,14 @@ app.use(session({
 
 // Auth routes
 app.post('/signup', async (req, res) => {
-  const { username, password, bio } = req.body;
+  const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
 
   try {
     const existingUser = await User.findOne({ username });
     if (existingUser) return res.status(400).json({ message: 'Username already taken' });
 
-    const user = new User({ username, password, bio });
+    const user = new User({ username, password });
     await user.save();
     req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Signed up' });
@@ -117,50 +115,37 @@ app.post('/logout', (req, res) => {
   });
 });
 
-// Upload profile picture
-app.post('/upload-profile-pic', upload.single('profilePic'), async (req, res) => {
+// Image upload
+app.post('/upload', upload.single('photo'), async (req, res) => {
   if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
   try {
     const processedBuffer = await sharp(req.file.buffer)
-      .resize(200, 200, { fit: sharp.fit.cover })
+      .resize(800, 800, { fit: sharp.fit.cover })
       .jpeg({ quality: 80 })
       .toBuffer();
 
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'picpal_profiles' },
+        { folder: 'picpal_uploads' },
         (error, result) => (error ? reject(error) : resolve(result))
       );
       streamifier.createReadStream(processedBuffer).pipe(uploadStream);
     });
 
-    const user = await User.findById(req.session.user._id);
-    user.profilePic = result.secure_url;
-    await user.save();
+    const newImage = new Image({
+      url: result.secure_url,
+      public_id: result.public_id,
+      userId: req.session.user._id,
+      username: req.session.user.username,
+    });
 
-    res.json({ message: 'Profile picture updated', profilePic: result.secure_url });
+    await newImage.save();
+    res.json({ message: 'Image uploaded', image: newImage });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Upload failed' });
-  }
-});
-
-// Update bio
-app.post('/update-bio', async (req, res) => {
-  const { bio } = req.body;
-  if (!bio) return res.status(400).json({ message: 'Bio required' });
-
-  try {
-    const user = await User.findById(req.session.user._id);
-    user.bio = bio;
-    await user.save();
-
-    res.json({ message: 'Bio updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to update bio' });
   }
 });
 
@@ -187,34 +172,67 @@ app.get('/my-images', async (req, res) => {
   }
 });
 
-// Fetch user profile
-app.get('/user/:username', async (req, res) => {
-  const { username } = req.params;
-
-  try {
-    const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const images = await Image.find({ userId: user._id }).sort({ timestamp: -1 });
-    res.json({ user, images });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch user profile' });
-  }
-});
-
-// Delete account
-app.delete('/delete-account', async (req, res) => {
+// Like
+app.post('/like/:id', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const user = await User.findById(req.session.user._id);
-    await user.deleteOne();
-    req.session.destroy();
-    res.json({ message: 'Account deleted' });
+    const image = await Image.findById(req.params.id).select('_id likes likedBy');
+    if (!image) return res.status(404).json({ message: 'Image not found' });
+
+    if (image.likedBy.includes(req.session.user._id.toString())) {
+      return res.status(400).json({ message: 'Already liked' });
+    }
+
+    image.likes++;
+    image.likedBy.push(req.session.user._id.toString());
+    await image.save();
+
+    res.json(image);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Failed to delete account' });
+    res.status(500).json({ message: 'Failed to like image' });
+  }
+});
+
+// Delete
+app.delete('/delete/:id', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const image = await Image.findById(req.params.id);
+    if (!image || image.userId !== req.session.user._id.toString()) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    await cloudinary.uploader.destroy(image.public_id);
+    await image.deleteOne();
+
+    res.json({ message: 'Image deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete image' });
+  }
+});
+
+// Comment
+app.post('/comment/:id', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ message: 'Unauthorized' });
+
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ message: 'Comment text required' });
+
+  try {
+    const image = await Image.findById(req.params.id);
+    if (!image) return res.status(404).json({ message: 'Image not found' });
+
+    image.comments.push({ username: req.session.user.username, text });
+    await image.save();
+
+    res.json({ message: 'Comment added', comments: image.comments });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to comment' });
   }
 });
 
