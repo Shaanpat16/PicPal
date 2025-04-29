@@ -17,6 +17,7 @@ body {
   transition: background-color 0.3s ease;
 }
 
+/* Header */
 header {
   background-color: var(--primary-color);
   padding: 20px;
@@ -142,28 +143,20 @@ input[type="file"] {
   border-radius: 10px;
 }
 
+/* Profile Picture and Bio Display */
 .username {
   font-weight: bold;
   color: var(--primary-color);
   margin-top: 10px;
 }
 
-.likeBtn,
-.deleteBtn {
-  margin-top: 10px;
-  padding: 10px 20px;
-  font-size: 1rem;
-  border: none;
-  background-color: var(--secondary-color);
-  color: var(--text-light);
-  border-radius: 50px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.username a {
+  color: var(--primary-color);
+  text-decoration: none;
 }
 
-.likeBtn:hover,
-.deleteBtn:hover {
-  background-color: #ff6b81;
+.username a:hover {
+  text-decoration: underline;
 }
 
 /* Modal */
@@ -196,4 +189,34 @@ input[type="file"] {
   right: 10px;
   font-size: 24px;
   cursor: pointer;
+}
+
+/* Profile Page */
+#profilePage {
+  margin: 50px auto;
+  text-align: center;
+}
+
+#profilePage img {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin-bottom: 20px;
+}
+
+#profilePage h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+#profilePage p {
+  font-size: 1.1rem;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+}
+
+#profilePage .photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
 }
