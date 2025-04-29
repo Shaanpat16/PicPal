@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -8,6 +6,8 @@ const MongoStore = require('connect-mongo');
 const mongoose = require('mongoose');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 require('dotenv').config();
 
 const app = express();
@@ -18,16 +18,19 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ Connected to MongoDB'))
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err.message);
-  process.exit(1);
-});
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+    process.exit(1);
+  });
 
 // Models
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
+  password: { type: String },
+  googleId: { type: String, unique: true },
+  bio: { type: String, default: '' },
+  profilePic: { type: String },
 });
 
 const imageSchema = new mongoose.Schema({
@@ -51,6 +54,40 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Passport.js Google OAuth2 Configuration
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: process.env.GOOGLE_CALLBACK_URL,
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const existingUser = await User.findOne({ googleId: profile.id });
+    if (existingUser) {
+      return done(null, existingUser);
+    } else {
+      const newUser = new User({
+        username: profile.displayName,
+        googleId: profile.id,
+        bio: '', // Default bio
+        profilePic: profile.photos[0].value, // Store Google profile picture
+      });
+      await newUser.save();
+      return done(null, newUser);
+    }
+  } catch (err) {
+    return done(err);
+  }
+}));
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
+});
+
 // Middlewares
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -58,7 +95,6 @@ const upload = multer({ storage });
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -68,6 +104,9 @@ app.use(session({
     crypto: { secret: process.env.SESSION_SECRET },
   }),
 }));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Auth routes
 app.post('/signup', async (req, res) => {
@@ -113,6 +152,13 @@ app.post('/logout', (req, res) => {
     res.clearCookie('connect.sid');
     res.json({ message: 'Logged out' });
   });
+});
+
+// Google OAuth routes
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
+  res.redirect('/');
 });
 
 // Image upload
