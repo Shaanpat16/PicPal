@@ -195,6 +195,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Google Login button functionality
+  const handleGoogleLogin = async (response) => {
+    const token = response.credential;
+    const res = await fetch('/google-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+
+    const result = await res.json();
+    if (res.ok) {
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'block';
+      authModal.style.display = 'none';
+      await loadStream();
+      await loadMyPhotos();
+    } else {
+      alert(result.message || 'Authentication failed.');
+    }
+  };
+
+  const googleLoginBtn = document.getElementById('google-login-btn');
+  googleLoginBtn.addEventListener('click', () => {
+    google.accounts.id.prompt();
+  });
+
+  // Google Sign-In API initialization
+  google.accounts.id.initialize({
+    client_id: 'YOUR_GOOGLE_CLIENT_ID',
+    callback: handleGoogleLogin,
+  });
+
+  // Google login button
+  google.accounts.id.renderButton(
+    googleLoginBtn, 
+    { theme: 'outline', size: 'large' }
+  );
+
   streamTab.addEventListener('click', () => showTab('stream'));
   myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
   accountTab.addEventListener('click', () => showTab('account'));
