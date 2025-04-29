@@ -18,6 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
+  const bioInput = document.getElementById('bio'); // For bio input
+  const profilePicInput = document.getElementById('profilePic'); // For profile picture input
+  const accountUsernameInput = document.getElementById('accountUsername'); // For changing username
+  const accountPasswordInput = document.getElementById('accountPassword'); // For changing password
+  const deleteAccountBtn = document.getElementById('deleteAccountBtn'); // Button to delete account
   const closeModal = document.getElementById('closeModal');
 
   let isLogin = true;
@@ -45,11 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const makeImageCard = (img, isMine) => {
-    if (!img._id) {
-      console.error('Image missing _id:', img);
-      return;
-    }
-
     const card = document.createElement('div');
     card.className = 'imageCard';
 
@@ -241,6 +241,69 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('likedImages');
     await loadStream();
     await loadMyPhotos();
+  });
+
+  // Handle profile picture update
+  const profilePicInput = document.getElementById('profilePicInput'); // Input for profile picture
+  const updateProfilePicBtn = document.getElementById('updateProfilePicBtn'); // Button to update profile picture
+  updateProfilePicBtn.addEventListener('click', async () => {
+    const file = profilePicInput.files[0];
+    if (!file) return alert('Please select a profile picture.');
+
+    const formData = new FormData();
+    formData.append('profilePic', file);
+
+    const res = await fetch('/update-profile-picture', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await res.json();
+    if (res.ok) {
+      alert('Profile picture updated!');
+      // Update the UI with the new profile picture URL
+      document.getElementById('profilePicDisplay').src = result.profilePic;
+    } else {
+      alert(result.message || 'Failed to update profile picture');
+    }
+  });
+
+  // Handle account update (username and password change)
+  const updateAccountBtn = document.getElementById('updateAccountBtn');
+  updateAccountBtn.addEventListener('click', async () => {
+    const username = accountUsernameInput.value.trim();
+    const password = accountPasswordInput.value.trim();
+
+    if (!username || !password) return alert('Please fill in all fields.');
+
+    const res = await fetch('/update-account', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const result = await res.json();
+    if (res.ok) {
+      alert('Account updated');
+      // Update the UI to reflect the new username
+      document.getElementById('currentUsername').textContent = result.username;
+    } else {
+      alert(result.message || 'Failed to update account');
+    }
+  });
+
+  // Handle account deletion
+  deleteAccountBtn.addEventListener('click', async () => {
+    const confirmDelete = confirm('Are you sure you want to delete your account? This will also delete all your photos.');
+    if (confirmDelete) {
+      const res = await fetch('/delete-account', { method: 'DELETE' });
+      const result = await res.json();
+      if (res.ok) {
+        alert('Your account and all photos have been deleted.');
+        // Redirect to the login page or logout
+        window.location.href = '/';
+      } else {
+        alert(result.message || 'Failed to delete account');
+      }
+    }
   });
 
   loadStream();
