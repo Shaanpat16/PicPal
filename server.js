@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   bio: { type: String, default: '' },
-  profilePic: { type: String, default: '' }, // Add profilePic to store image URL
+  profilePic: { type: String, default: '' }, // Profile picture
 });
 
 const imageSchema = new mongoose.Schema({
@@ -213,6 +213,22 @@ app.delete('/delete/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to delete image' });
+  }
+});
+
+// Search for users
+app.get('/user/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Get the user's images
+    const images = await Image.find({ userId: user._id });
+
+    res.json({ username: user.username, bio: user.bio, profilePic: user.profilePic, images });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch user profile' });
   }
 });
 
