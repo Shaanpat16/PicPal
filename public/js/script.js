@@ -28,75 +28,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  let isLogin = true; // default to login page
+  let isLogin = true;  // Default to login page
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
-  // Show profile page when clicked on a username
-  const showProfilePage = (user) => {
-    profilePageSection.style.display = 'block';
-    profileUsername.textContent = user.username;
-    profileBio.textContent = user.bio;
-    profileImageGrid.innerHTML = '';
-
-    // Display user images
-    user.images.forEach(img => {
-      const imageCard = document.createElement('div');
-      imageCard.className = 'imageCard';
-      const imageEl = document.createElement('img');
-      imageEl.src = img.url;
-      imageEl.alt = 'User Photo';
-      imageCard.appendChild(imageEl);
-      profileImageGrid.appendChild(imageCard);
-    });
-  };
-
-  // Search user by username
-  searchBtn.addEventListener('click', async () => {
-    const username = searchUsernameInput.value.trim();
-    if (!username) return alert('Please enter a username');
-
-    const res = await fetch(`/user/${username}`);
-    if (res.ok) {
-      const user = await res.json();
-      showProfilePage(user);
-    } else {
-      alert('User not found');
+  // Fetch and display stream images
+  const loadStream = async () => {
+    const res = await fetch('/images');
+    if (!res.ok) {
+      console.error('Failed to fetch images');
+      return;
     }
-  });
-
-  // Function to show tabs (stream, myPhotos, account)
-  const showTab = (tabId) => {
-    streamSection.style.display = 'none';
-    myPhotosSection.style.display = 'none';
-    accountSection.style.display = 'none';
-    searchSection.style.display = 'none';
-    profilePageSection.style.display = 'none';
-
-    if (tabId === 'stream') streamSection.style.display = 'block';
-    if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
-    if (tabId === 'account') accountSection.style.display = 'block';
-    if (tabId === 'search') searchSection.style.display = 'block';
-  };
-
-  // Update the authentication modal
-  const updateAuthText = () => {
-    authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
-    authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
-    signUpActionBtn.style.display = isLogin ? 'none' : 'block';
-    toggleAuth.innerHTML = isLogin
-      ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
-      : "Already have an account? <span class='switchAuth'>Login</span>";
-
-    document.querySelector('.switchAuth').addEventListener('click', () => {
-      isLogin = !isLogin;
-      updateAuthText();
+    const images = await res.json();
+    streamImages.innerHTML = ''; // Clear the existing images before adding new ones
+    images.forEach(img => {
+      const imgCard = makeImageCard(img, false);
+      streamImages.appendChild(imgCard);
     });
   };
 
-  // Function to make image card with comment sections
+  // Fetch and display user's own images
+  const loadMyPhotos = async () => {
+    const res = await fetch('/my-images');
+    if (!res.ok) {
+      console.error('Failed to fetch my images');
+      return;
+    }
+    const images = await res.json();
+    myImages.innerHTML = ''; // Clear the existing images
+    images.forEach(img => {
+      const imgCard = makeImageCard(img, true);
+      myImages.appendChild(imgCard);
+    });
+  };
+
+  // Helper function to create an image card with comments and likes
   const makeImageCard = (img, isMine) => {
     const card = document.createElement('div');
     card.className = 'imageCard';
+
     const imageEl = document.createElement('img');
     imageEl.src = img.url;
     imageEl.alt = 'Uploaded photo';
@@ -140,15 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (res.ok) {
         commentInput.value = '';
-        await loadStream();
-        await loadMyPhotos();
+        loadStream();
+        loadMyPhotos();
       } else {
         const err = await res.json();
         alert(err.message || 'Failed to post comment.');
       }
     };
     commentsContainer.appendChild(commentBtn);
-
     card.appendChild(commentsContainer);
 
     const likeDisplay = document.createElement('div');
@@ -156,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     likeDisplay.className = 'likeDisplay';
     card.appendChild(likeDisplay);
 
-    // Like functionality
+    // Handle delete or like functionality
     if (isMine) {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
@@ -164,8 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
       delBtn.onclick = async () => {
         const res = await fetch(`/delete/${encodeURIComponent(img._id)}`, { method: 'DELETE' });
         if (res.ok) {
-          await loadStream();
-          await loadMyPhotos();
+          loadStream();
+          loadMyPhotos();
         } else {
           alert('Failed to delete image.');
         }
@@ -199,23 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   };
 
-  const loadStream = async () => {
-    const res = await fetch('/images');
-    if (!res.ok) return;
-    const images = await res.json();
-    streamImages.innerHTML = '';
-    images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
-  };
-
-  const loadMyPhotos = async () => {
-    const res = await fetch('/my-images');
-    if (!res.ok) return;
-    const images = await res.json();
-    myImages.innerHTML = '';
-    images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
-  };
-
-  // Handle upload
+  // Handle upload button
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -227,8 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (res.ok) {
       alert('Photo uploaded!');
       photoInput.value = '';
-      await loadStream();
-      await loadMyPhotos();
+      loadStream();
+      loadMyPhotos();
       showTab('myPhotos');
     } else {
       const err = await res.json();
@@ -260,8 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'block';
       authModal.style.display = 'none';
-      await loadStream();
-      await loadMyPhotos();
+      loadStream();
+      loadMyPhotos();
     } else {
       alert(result.message || 'Signup failed.');
     }
@@ -284,8 +236,8 @@ document.addEventListener('DOMContentLoaded', () => {
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'block';
       authModal.style.display = 'none';
-      await loadStream();
-      await loadMyPhotos();
+      loadStream();
+      loadMyPhotos();
     } else {
       alert(result.message || 'Authentication failed.');
     }
@@ -297,8 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.style.display = 'none';
     likedImages = [];
     localStorage.removeItem('likedImages');
-    await loadStream();
-    await loadMyPhotos();
+    loadStream();
+    loadMyPhotos();
   });
 
   loadStream();
