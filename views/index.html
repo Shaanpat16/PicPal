@@ -42,9 +42,38 @@
       <div id="myImages" class="photo-grid"></div>
     </section>
 
+    <!-- Account Settings Section -->
     <section id="account" class="tabContent" style="display: none;">
       <h2>Account Settings</h2>
-      <p>Manage your account settings here.</p>
+      
+      <!-- Profile Picture -->
+      <div id="profilePicSection">
+        <h3>Profile Picture</h3>
+        <img id="profilePic" src="" alt="Profile Picture" width="150" height="150" />
+        <input type="file" id="profilePicInput" accept="image/*" />
+        <button id="updateProfilePicBtn">Update Profile Picture</button>
+      </div>
+      
+      <!-- Username -->
+      <div id="usernameSection">
+        <h3>Username</h3>
+        <input type="text" id="usernameInput" placeholder="New Username" />
+        <button id="updateUsernameBtn">Update Username</button>
+      </div>
+
+      <!-- Password -->
+      <div id="passwordSection">
+        <h3>Password</h3>
+        <input type="password" id="newPasswordInput" placeholder="New Password" />
+        <button id="updatePasswordBtn">Update Password</button>
+      </div>
+
+      <!-- Delete Account -->
+      <div id="deleteAccountSection">
+        <h3>Delete Account</h3>
+        <button id="deleteAccountBtn" style="background-color: red;">Delete My Account</button>
+        <p>Warning: This action will permanently delete your account and all photos.</p>
+      </div>
     </section>
   </main>
 
