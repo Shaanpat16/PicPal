@@ -143,10 +143,23 @@ input[type="file"] {
   border-radius: 10px;
 }
 
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.user-info img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .username {
   font-weight: bold;
   color: var(--primary-color);
-  margin-top: 10px;
 }
 
 .username a {

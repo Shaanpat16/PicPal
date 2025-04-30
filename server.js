@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   bio: { type: String, default: '' },
-  profilePic: { type: String, default: '' }, // Profile picture URL
+  profilePic: { type: String, default: 'https://example.com/default-profile-pic.jpg' }, // Default profile picture URL
 });
 
 const imageSchema = new mongoose.Schema({
@@ -172,6 +172,38 @@ app.post('/upload', isLoggedIn, upload.single('photo'), async (req, res) => {
   }
 });
 
+// Profile picture upload
+app.post('/profile-pic', isLoggedIn, upload.single('profilePic'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No profile picture uploaded' });
+
+  try {
+    const processedBuffer = await sharp(req.file.buffer)
+      .resize(150, 150, { fit: sharp.fit.cover })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'picpal_profile_pics' },
+        (error, result) => (error ? reject(error) : resolve(result))
+      );
+      streamifier.createReadStream(processedBuffer).pipe(uploadStream);
+    });
+
+    // Update user's profile picture
+    const user = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { profilePic: result.secure_url },
+      { new: true }
+    );
+
+    res.json({ message: 'Profile picture updated', profilePic: result.secure_url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Profile picture upload failed' });
+  }
+});
+
 // Fetch images
 app.get('/images', async (req, res) => {
   try {
@@ -183,18 +215,18 @@ app.get('/images', async (req, res) => {
   }
 });
 
-// Fetch user images
-app.get('/user/:username', async (req, res) => {
+// Fetch user images (updated route)
+app.get('/user/photos', isLoggedIn, async (req, res) => {
   try {
-    const user = await User.findOne({ username: req.params.username });
+    const user = await User.findById(req.session.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const images = await Image.find({ userId: user._id });
+    const userImages = await Image.find({ userId: req.session.user._id }).sort({ timestamp: -1 });
 
-    res.json({ username: user.username, bio: user.bio, profilePic: user.profilePic, images });
+    res.json({ username: user.username, profilePic: user.profilePic, images: userImages });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Failed to fetch user profile' });
+    res.status(500).json({ message: 'Failed to fetch user photos' });
   }
 });
 

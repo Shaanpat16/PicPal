@@ -54,10 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
     imageEl.alt = 'Uploaded photo';
     card.appendChild(imageEl);
 
+    const userContainer = document.createElement('div');
+    userContainer.className = 'userDisplay';
+
+    if (img.profilePicUrl) {
+      const profileImg = document.createElement('img');
+      profileImg.src = img.profilePicUrl;
+      profileImg.alt = `${img.username}'s profile picture`;
+      profileImg.className = 'profileThumb';
+      userContainer.appendChild(profileImg);
+    }
+
     const usernameEl = document.createElement('div');
     usernameEl.className = 'username';
     usernameEl.textContent = img.username || 'Anonymous';
-    card.appendChild(usernameEl);
+    userContainer.appendChild(usernameEl);
+
+    card.appendChild(userContainer);
 
     const commentsContainer = document.createElement('div');
     commentsContainer.className = 'commentsContainer';
@@ -66,7 +79,19 @@ document.addEventListener('DOMContentLoaded', () => {
       img.comments.forEach(comment => {
         const commentEl = document.createElement('div');
         commentEl.className = 'comment';
-        commentEl.textContent = `${comment.username}: ${comment.text}`;
+
+        if (comment.profilePicUrl) {
+          const commentImg = document.createElement('img');
+          commentImg.src = comment.profilePicUrl;
+          commentImg.alt = `${comment.username}'s profile picture`;
+          commentImg.className = 'profileThumb commentThumb';
+          commentEl.appendChild(commentImg);
+        }
+
+        const commentText = document.createElement('span');
+        commentText.textContent = `${comment.username}: ${comment.text}`;
+        commentEl.appendChild(commentText);
+
         commentsContainer.appendChild(commentEl);
       });
     }
@@ -94,7 +119,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const newComment = await res.json();
         const newCommentEl = document.createElement('div');
         newCommentEl.className = 'comment';
-        newCommentEl.textContent = `${newComment.username}: ${newComment.text}`;
+
+        if (newComment.profilePicUrl) {
+          const commentImg = document.createElement('img');
+          commentImg.src = newComment.profilePicUrl;
+          commentImg.alt = `${newComment.username}'s profile picture`;
+          commentImg.className = 'profileThumb commentThumb';
+          newCommentEl.appendChild(commentImg);
+        }
+
+        const commentTextEl = document.createElement('span');
+        commentTextEl.textContent = `${newComment.username}: ${newComment.text}`;
+        newCommentEl.appendChild(commentTextEl);
+
         commentsContainer.insertBefore(newCommentEl, commentInput);
         commentInput.value = '';
       } else {
