@@ -230,6 +230,21 @@ app.get('/user/photos', isLoggedIn, async (req, res) => {
   }
 });
 
+// Fetch user images at /my-images
+app.get('/my-images', isLoggedIn, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const userImages = await Image.find({ userId: req.session.user._id }).sort({ timestamp: -1 });
+
+    res.json({ username: user.username, profilePic: user.profilePic, images: userImages });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch user images' });
+  }
+});
+
 // Serve frontend
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
