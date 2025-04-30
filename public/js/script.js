@@ -195,7 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) return;
     const images = await res.json();
     streamImages.innerHTML = '';
-    images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
+    if (Array.isArray(images)) {
+      images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
+    } else {
+      console.error('Error: Expected an array of images');
+    }
   };
 
   const loadMyPhotos = async () => {
@@ -203,7 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) return;
     const images = await res.json();
     myImages.innerHTML = '';
-    images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
+    if (Array.isArray(images)) {
+      images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
+    } else {
+      console.error('Error: Expected an array of images');
+    }
   };
 
   uploadBtn.addEventListener('click', async () => {
@@ -291,13 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetch('/logout', { method: 'POST' });
     loginBtn.style.display = 'block';
     logoutBtn.style.display = 'none';
-    likedImages = [];
-    localStorage.removeItem('likedImages');
-    await loadStream();
-    await loadMyPhotos();
   });
 
+  // Initially load the stream tab
+  showTab('stream');
   loadStream();
   loadMyPhotos();
-  showTab('stream');
 });
