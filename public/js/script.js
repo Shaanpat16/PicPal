@@ -6,13 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const streamSection = document.getElementById('stream');
   const myPhotosSection = document.getElementById('myPhotos');
   const accountSection = document.getElementById('account');
-  const searchSection = document.getElementById('searchSection');
-  const searchUsernameInput = document.getElementById('searchUsername');
-  const searchBtn = document.getElementById('searchUserBtn');
-  const profilePageSection = document.getElementById('userProfileSection');
-  const profileUsername = document.getElementById('profileUsername');
-  const profileBio = document.getElementById('userBio');
-  const profileImageGrid = document.getElementById('userImages');
   const uploadBtn = document.getElementById('uploadBtn');
   const photoInput = document.getElementById('photoInput');
   const streamImages = document.getElementById('streamImages');
@@ -22,47 +15,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const authModal = document.getElementById('authModal');
   const authTitle = document.getElementById('authTitle');
   const authActionBtn = document.getElementById('authActionBtn');
-  const signUpActionBtn = document.getElementById('signUpActionBtn');
   const toggleAuth = document.getElementById('toggleAuth');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const closeModal = document.getElementById('closeModal');
 
-  let isLogin = true;  // Default to login page
+  let isLogin = true;
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
-  // Fetch and display stream images
-  const loadStream = async () => {
-    const res = await fetch('/images');
-    if (!res.ok) {
-      console.error('Failed to fetch images');
-      return;
-    }
-    const images = await res.json();
-    streamImages.innerHTML = ''; // Clear the existing images before adding new ones
-    images.forEach(img => {
-      const imgCard = makeImageCard(img, false);
-      streamImages.appendChild(imgCard);
-    });
+  const showTab = (tabId) => {
+    streamSection.style.display = 'none';
+    myPhotosSection.style.display = 'none';
+    accountSection.style.display = 'none';
+    if (tabId === 'stream') streamSection.style.display = 'block';
+    if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
+    if (tabId === 'account') accountSection.style.display = 'block';
   };
 
-  // Fetch and display user's own images
-  const loadMyPhotos = async () => {
-    const res = await fetch('/my-images');
-    if (!res.ok) {
-      console.error('Failed to fetch my images');
-      return;
-    }
-    const images = await res.json();
-    myImages.innerHTML = ''; // Clear the existing images
-    images.forEach(img => {
-      const imgCard = makeImageCard(img, true);
-      myImages.appendChild(imgCard);
-    });
+  const updateAuthText = () => {
+    authTitle.textContent = isLogin ? 'Login' : 'Sign Up';
+    authActionBtn.textContent = isLogin ? 'Login' : 'Sign Up';
+    toggleAuth.innerHTML = isLogin
+      ? "Don't have an account? <span class='switchAuth'>Sign up</span>"
+      : "Already have an account? <span class='switchAuth'>Login</span>";
   };
 
-  // Helper function to create an image card with comments and likes
   const makeImageCard = (img, isMine) => {
+    if (!img._id) {
+      console.error('Image missing _id:', img);
+      return;
+    }
+
     const card = document.createElement('div');
     card.className = 'imageCard';
 
@@ -76,14 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameEl.textContent = img.username || 'Anonymous';
     card.appendChild(usernameEl);
 
-    // Comments section
     const commentsContainer = document.createElement('div');
     commentsContainer.className = 'commentsContainer';
+
     if (img.comments && img.comments.length) {
       img.comments.forEach(comment => {
         const commentEl = document.createElement('div');
         commentEl.className = 'comment';
-        commentEl.textContent = ${comment.username}: ${comment.text};
+        commentEl.textContent = `${comment.username}: ${comment.text}`;
         commentsContainer.appendChild(commentEl);
       });
     }
@@ -101,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const commentText = commentInput.value.trim();
       if (!commentText) return;
 
-      const res = await fetch(/comment/${encodeURIComponent(img._id)}, {
+      const res = await fetch(`/comment/${encodeURIComponent(img._id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: commentText })
@@ -109,31 +92,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (res.ok) {
         commentInput.value = '';
-        loadStream();
-        loadMyPhotos();
+        await loadStream();
+        await loadMyPhotos();
       } else {
         const err = await res.json();
         alert(err.message || 'Failed to post comment.');
       }
     };
     commentsContainer.appendChild(commentBtn);
+
     card.appendChild(commentsContainer);
 
     const likeDisplay = document.createElement('div');
-    likeDisplay.textContent = ❤️ ${img.likes || 0};
+    likeDisplay.textContent = `❤️ ${img.likes || 0}`;
     likeDisplay.className = 'likeDisplay';
     card.appendChild(likeDisplay);
 
-    // Handle delete or like functionality
     if (isMine) {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
       delBtn.className = 'deleteBtn';
       delBtn.onclick = async () => {
-        const res = await fetch(/delete/${encodeURIComponent(img._id)}, { method: 'DELETE' });
+        const res = await fetch(`/delete/${encodeURIComponent(img._id)}`, { method: 'DELETE' });
         if (res.ok) {
-          loadStream();
-          loadMyPhotos();
+          await loadStream();
+          await loadMyPhotos();
         } else {
           alert('Failed to delete image.');
         }
@@ -148,14 +131,14 @@ document.addEventListener('DOMContentLoaded', () => {
       likeBtn.onclick = async () => {
         if (likedImages.includes(img._id)) return;
 
-        const res = await fetch(/like/${encodeURIComponent(img._id)}, { method: 'POST' });
+        const res = await fetch(`/like/${encodeURIComponent(img._id)}`, { method: 'POST' });
         if (res.ok) {
           const updatedImage = await res.json();
           likedImages.push(img._id);
           localStorage.setItem('likedImages', JSON.stringify(likedImages));
           likeBtn.textContent = 'Liked';
           likeBtn.disabled = true;
-          likeDisplay.textContent = ❤️ ${updatedImage.likes};
+          likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
         } else {
           const error = await res.json();
           alert(error.message || 'Failed to like the image.');
@@ -167,7 +150,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   };
 
-  // Handle upload button
+  const loadStream = async () => {
+    const res = await fetch('/images');
+    if (!res.ok) return;
+    const images = await res.json();
+    streamImages.innerHTML = '';
+    images.forEach(img => streamImages.appendChild(makeImageCard(img, false)));
+  };
+
+  const loadMyPhotos = async () => {
+    const res = await fetch('/my-images');
+    if (!res.ok) return;
+    const images = await res.json();
+    myImages.innerHTML = '';
+    images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
+  };
+
   uploadBtn.addEventListener('click', async () => {
     const file = photoInput.files[0];
     if (!file) return alert('Please select a file.');
@@ -179,44 +177,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (res.ok) {
       alert('Photo uploaded!');
       photoInput.value = '';
-      loadStream();
-      loadMyPhotos();
+      await loadStream();
+      await loadMyPhotos();
       showTab('myPhotos');
     } else {
       const err = await res.json();
-      alert(Upload failed: ${err.message});
+      alert(`Upload failed: ${err.message}`);
     }
   });
 
-  // Login and Sign up Logic
+  streamTab.addEventListener('click', () => showTab('stream'));
+  myPhotosTab.addEventListener('click', () => showTab('myPhotos'));
+  accountTab.addEventListener('click', () => showTab('account'));
+
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
+    // Add event listener once after modal is populated
+    setTimeout(() => {
+      const switchAuth = document.querySelector('.switchAuth');
+      if (switchAuth) {
+        switchAuth.addEventListener('click', () => {
+          isLogin = !isLogin;
+          updateAuthText();
+          setTimeout(() => {
+            const newSwitchAuth = document.querySelector('.switchAuth');
+            if (newSwitchAuth) {
+              newSwitchAuth.addEventListener('click', () => {
+                isLogin = !isLogin;
+                updateAuthText();
+              });
+            }
+          }, 0);
+        });
+      }
+    }, 0);
   });
 
-  signUpActionBtn.addEventListener('click', async () => {
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!username || !password) return alert('Please fill in all fields.');
-
-    const res = await fetch('/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-
-    const result = await res.json();
-    if (res.ok) {
-      alert('Signed up successfully!');
-      loginBtn.style.display = 'none';
-      logoutBtn.style.display = 'block';
-      authModal.style.display = 'none';
-      loadStream();
-      loadMyPhotos();
-    } else {
-      alert(result.message || 'Signup failed.');
-    }
+  closeModal.addEventListener('click', () => {
+    authModal.style.display = 'none';
   });
 
   authActionBtn.addEventListener('click', async () => {
@@ -225,19 +224,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!username || !password) return alert('Please fill in all fields.');
 
-    const res = await fetch('/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
+    const res = isLogin
+      ? await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        })
+      : await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
 
     const result = await res.json();
     if (res.ok) {
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'block';
       authModal.style.display = 'none';
-      loadStream();
-      loadMyPhotos();
+      await loadStream();
+      await loadMyPhotos();
     } else {
       alert(result.message || 'Authentication failed.');
     }
@@ -249,8 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.style.display = 'none';
     likedImages = [];
     localStorage.removeItem('likedImages');
-    loadStream();
-    loadMyPhotos();
+    await loadStream();
+    await loadMyPhotos();
   });
 
   loadStream();
