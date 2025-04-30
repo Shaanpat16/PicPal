@@ -91,9 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (res.ok) {
+        const newComment = await res.json();
+        const newCommentEl = document.createElement('div');
+        newCommentEl.className = 'comment';
+        newCommentEl.textContent = `${newComment.username}: ${newComment.text}`;
+        commentsContainer.insertBefore(newCommentEl, commentInput);
         commentInput.value = '';
-        await loadStream();
-        await loadMyPhotos();
       } else {
         const err = await res.json();
         alert(err.message || 'Failed to post comment.');
@@ -138,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem('likedImages', JSON.stringify(likedImages));
           likeBtn.textContent = 'Liked';
           likeBtn.disabled = true;
-          likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
+          likeDisplay.textContent = `❤️ ${updatedImage.likes || 0}`;
         } else {
           const error = await res.json();
           alert(error.message || 'Failed to like the image.');
@@ -193,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loginBtn.addEventListener('click', () => {
     authModal.style.display = 'block';
     updateAuthText();
-    // Add event listener once after modal is populated
     setTimeout(() => {
       const switchAuth = document.querySelector('.switchAuth');
       if (switchAuth) {
