@@ -31,6 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLogin = true;  // Default to login page
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
+  // Function to show the selected section and hide others
+  const showTab = (tabId) => {
+    streamSection.style.display = 'none';
+    myPhotosSection.style.display = 'none';
+    accountSection.style.display = 'none';
+    searchSection.style.display = 'none';
+    profilePageSection.style.display = 'none';
+
+    if (tabId === 'stream') streamSection.style.display = 'block';
+    if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
+    if (tabId === 'account') accountSection.style.display = 'block';
+    if (tabId === 'search') searchSection.style.display = 'block';
+  };
+
   // Fetch and display stream images
   const loadStream = async () => {
     const res = await fetch('/images');
