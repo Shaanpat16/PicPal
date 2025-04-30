@@ -31,20 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLogin = true;  // Default to login page
   let likedImages = JSON.parse(localStorage.getItem('likedImages')) || [];
 
-  // Function to show the selected section and hide others
-  const showTab = (tabId) => {
-    streamSection.style.display = 'none';
-    myPhotosSection.style.display = 'none';
-    accountSection.style.display = 'none';
-    searchSection.style.display = 'none';
-    profilePageSection.style.display = 'none';
-
-    if (tabId === 'stream') streamSection.style.display = 'block';
-    if (tabId === 'myPhotos') myPhotosSection.style.display = 'block';
-    if (tabId === 'account') accountSection.style.display = 'block';
-    if (tabId === 'search') searchSection.style.display = 'block';
-  };
-
   // Fetch and display stream images
   const loadStream = async () => {
     const res = await fetch('/images');
@@ -97,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.comments.forEach(comment => {
         const commentEl = document.createElement('div');
         commentEl.className = 'comment';
-        commentEl.textContent = `${comment.username}: ${comment.text}`;
+        commentEl.textContent = ${comment.username}: ${comment.text};
         commentsContainer.appendChild(commentEl);
       });
     }
@@ -115,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const commentText = commentInput.value.trim();
       if (!commentText) return;
 
-      const res = await fetch(`/comment/${encodeURIComponent(img._id)}`, {
+      const res = await fetch(/comment/${encodeURIComponent(img._id)}, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: commentText })
@@ -134,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.appendChild(commentsContainer);
 
     const likeDisplay = document.createElement('div');
-    likeDisplay.textContent = `❤️ ${img.likes || 0}`;
+    likeDisplay.textContent = ❤️ ${img.likes || 0};
     likeDisplay.className = 'likeDisplay';
     card.appendChild(likeDisplay);
 
@@ -144,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
       delBtn.textContent = 'Delete';
       delBtn.className = 'deleteBtn';
       delBtn.onclick = async () => {
-        const res = await fetch(`/delete/${encodeURIComponent(img._id)}`, { method: 'DELETE' });
+        const res = await fetch(/delete/${encodeURIComponent(img._id)}, { method: 'DELETE' });
         if (res.ok) {
           loadStream();
           loadMyPhotos();
@@ -162,14 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
       likeBtn.onclick = async () => {
         if (likedImages.includes(img._id)) return;
 
-        const res = await fetch(`/like/${encodeURIComponent(img._id)}`, { method: 'POST' });
+        const res = await fetch(/like/${encodeURIComponent(img._id)}, { method: 'POST' });
         if (res.ok) {
           const updatedImage = await res.json();
           likedImages.push(img._id);
           localStorage.setItem('likedImages', JSON.stringify(likedImages));
           likeBtn.textContent = 'Liked';
           likeBtn.disabled = true;
-          likeDisplay.textContent = `❤️ ${updatedImage.likes}`;
+          likeDisplay.textContent = ❤️ ${updatedImage.likes};
         } else {
           const error = await res.json();
           alert(error.message || 'Failed to like the image.');
@@ -198,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showTab('myPhotos');
     } else {
       const err = await res.json();
-      alert(`Upload failed: ${err.message}`);
+      alert(Upload failed: ${err.message});
     }
   });
 
