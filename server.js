@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   bio: { type: String, default: '' },
-  profilePic: { type: String, default: 'https://example.com/default-profile-pic.jpg' }, // Default profile picture URL
+  profilePic: { type: String, default: 'https://example.com/default-profile-pic.jpg' },
 });
 
 const imageSchema = new mongoose.Schema({
@@ -81,23 +81,28 @@ const isLoggedIn = (req, res, next) => {
 
 // Auth routes
 
+app.get('/me', (req, res) => {
+  if (req.session && req.session.user) {
+    res.json({ user: req.session.user });
+  } else {
+    res.status(401).json({ message: 'Not logged in' });
+  }
+});
+
 // Signup
 app.post('/signup', async (req, res) => {
   const { username, password, bio } = req.body;
   if (!username || !password) return res.status(400).json({ message: 'Username and password are required' });
 
   try {
-    // Check if user already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) return res.status(400).json({ message: 'Username already taken' });
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10); // Hash password with a salt
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword, bio });
     await user.save();
 
-    req.session.user = { _id: user._id, username: user.username };  // Store user info in session
+    req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Signed up successfully' });
   } catch (err) {
     console.error(err);
@@ -111,15 +116,13 @@ app.post('/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ message: 'Username and password required' });
 
   try {
-    // Check if user exists
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // Compare passwords
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ message: 'Invalid credentials' });
 
-    req.session.user = { _id: user._id, username: user.username }; // Store user info in session
+    req.session.user = { _id: user._id, username: user.username };
     res.json({ message: 'Logged in successfully' });
   } catch (err) {
     console.error(err);
@@ -190,7 +193,6 @@ app.post('/profile-pic', isLoggedIn, upload.single('profilePic'), async (req, re
       streamifier.createReadStream(processedBuffer).pipe(uploadStream);
     });
 
-    // Update user's profile picture
     const user = await User.findByIdAndUpdate(
       req.session.user._id,
       { profilePic: result.secure_url },
