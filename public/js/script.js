@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Sections and buttons
   const streamTab = document.getElementById('streamTab');
   const myPhotosTab = document.getElementById('myPhotosTab');
   const accountTab = document.getElementById('accountTab');
@@ -135,6 +134,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const makeImageCard = (img, isMine) => {
+    if (!img.url) return console.warn('Missing image URL');
+
+    const card = document.createElement('div');
+    card.className = 'imageCard';
+
+    const imageEl = document.createElement('img');
+    imageEl.src = img.url;
+    imageEl.alt = 'Uploaded photo';
+    card.appendChild(imageEl);
+
+    const userEl = document.createElement('div');
+    userEl.className = 'username';
+    userEl.textContent = img.username || 'Unknown';
+    card.appendChild(userEl);
+
+    return card;
+  };
+
   const loadStream = async () => {
     const res = await fetch('/images');
     if (!res.ok) return;
@@ -150,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadMyPhotos = async () => {
     const res = await fetch('/my-images');
     if (!res.ok) return;
-    const images = await res.json();
+    const data = await res.json();
+    const images = data.images || [];
     myImages.innerHTML = '';
     if (Array.isArray(images)) {
       images.forEach(img => myImages.appendChild(makeImageCard(img, true)));
@@ -159,6 +178,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Enforce login first
   checkLogin();
 });
