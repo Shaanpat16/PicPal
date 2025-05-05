@@ -150,6 +150,53 @@ document.addEventListener('DOMContentLoaded', () => {
     userEl.textContent = img.username || 'Unknown';
     card.appendChild(userEl);
 
+    const likeBtn = document.createElement('button');
+    likeBtn.className = 'likeBtn';
+    likeBtn.textContent = likedImages.includes(img._id) ? '❤️ Liked' : '🤍 Like';
+    likeBtn.disabled = likedImages.includes(img._id);
+    likeBtn.addEventListener('click', async () => {
+      const res = await fetch(`/like/${img._id}`, { method: 'POST' });
+      if (res.ok) {
+        likedImages.push(img._id);
+        localStorage.setItem('likedImages', JSON.stringify(likedImages));
+        likeBtn.textContent = '❤️ Liked';
+        likeBtn.disabled = true;
+      }
+    });
+    card.appendChild(likeBtn);
+
+    const commentInput = document.createElement('input');
+    commentInput.placeholder = 'Write a comment...';
+    card.appendChild(commentInput);
+
+    const commentBtn = document.createElement('button');
+    commentBtn.textContent = 'Post';
+    commentBtn.addEventListener('click', async () => {
+      const text = commentInput.value.trim();
+      if (!text) return;
+      const res = await fetch(`/comment/${img._id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        commentInput.value = '';
+        await loadStream();
+      }
+    });
+    card.appendChild(commentBtn);
+
+    if (img.comments && img.comments.length) {
+      const commentsContainer = document.createElement('div');
+      commentsContainer.className = 'comments';
+      img.comments.forEach(comment => {
+        const commentEl = document.createElement('div');
+        commentEl.textContent = `${comment.username}: ${comment.text}`;
+        commentsContainer.appendChild(commentEl);
+      });
+      card.appendChild(commentsContainer);
+    }
+
     return card;
   };
 
