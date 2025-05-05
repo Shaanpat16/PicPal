@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const checkLogin = async () => {
     try {
-      const res = await fetch('/me');
+      const res = await fetch('/me', { credentials: 'include' });
       if (res.ok) {
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
@@ -81,7 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await fetch(isLogin ? '/login' : '/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
+      credentials: 'include'
     });
 
     const result = await res.json();
@@ -99,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   logoutBtn.addEventListener('click', async () => {
-    await fetch('/logout', { method: 'POST' });
+    await fetch('/logout', { method: 'POST', credentials: 'include' });
     loginBtn.style.display = 'block';
     logoutBtn.style.display = 'none';
     mainContent.style.display = 'none';
@@ -121,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData();
     formData.append('photo', file);
 
-    const res = await fetch('/upload', { method: 'POST', body: formData });
+    const res = await fetch('/upload', { method: 'POST', body: formData, credentials: 'include' });
     if (res.ok) {
       alert('Photo uploaded!');
       photoInput.value = '';
@@ -136,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const makeImageCard = (img, isMine) => {
     if (!img.url) return console.warn('Missing image URL');
-
     const card = document.createElement('div');
     card.className = 'imageCard';
 
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     likeBtn.textContent = likedImages.includes(img._id) ? '❤️ Liked' : '🤍 Like';
     likeBtn.disabled = likedImages.includes(img._id);
     likeBtn.addEventListener('click', async () => {
-      const res = await fetch(`/like/${img._id}`, { method: 'POST' });
+      const res = await fetch(`/like/${img._id}`, { method: 'POST', credentials: 'include' });
       if (res.ok) {
         likedImages.push(img._id);
         localStorage.setItem('likedImages', JSON.stringify(likedImages));
@@ -177,7 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`/comment/${img._id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text }),
+        credentials: 'include'
       });
       if (res.ok) {
         commentInput.value = '';
@@ -201,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const loadStream = async () => {
-    const res = await fetch('/images');
+    const res = await fetch('/images', { credentials: 'include' });
     if (!res.ok) return;
     const images = await res.json();
     streamImages.innerHTML = '';
@@ -213,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const loadMyPhotos = async () => {
-    const res = await fetch('/my-images');
+    const res = await fetch('/my-images', { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json();
     const images = data.images || [];
