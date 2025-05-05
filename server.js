@@ -175,6 +175,17 @@ app.post('/upload', isLoggedIn, upload.single('photo'), async (req, res) => {
   }
 });
 
+// Debug route for checking saved images
+app.get('/debug-images', async (req, res) => {
+  try {
+    const images = await Image.find({});
+    res.json({ count: images.length, images });
+  } catch (err) {
+    console.error('❌ Error in /debug-images:', err);
+    res.status(500).json({ message: 'Failed to fetch debug images' });
+  }
+});
+
 // Profile picture upload
 app.post('/profile-pic', isLoggedIn, upload.single('profilePic'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No profile picture uploaded' });
