@@ -4,108 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PicPal</title>
-  <link rel="stylesheet" href="/css/styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <link rel="icon" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <!-- Header -->
-  <header>
-    <div class="logo">PicPal</div>
-    <nav>
-      <button id="streamTab" class="nav-icon">Stream</button>
-      <button id="myPhotosTab" class="nav-icon">My Photos</button>
-      <button id="accountTab" class="nav-icon">Account</button>
-      <button id="logoutBtn" class="nav-icon" style="display: none;">Logout</button>
-      <button id="loginBtn" class="nav-icon">Login</button>
-      <button id="themeToggle" class="nav-icon">🌙</button>
-    </nav>
-  </header>
-
-  <!-- Main Content (login-gated) -->
-  <div id="mainContent" style="display: none;">
-    <main>
-      <section id="uploadSection">
-        <label for="photoInput" class="upload-label">Add Photo</label>
-        <input type="file" id="photoInput" accept="image/*" />
-        <div id="previewContainer">
-          <img id="photoPreview" />
-        </div>
-        <button id="uploadBtn">Upload</button>
-      </section>
-
-      <!-- Stream Section -->
-      <section id="stream" class="tabContent">
-        <div id="streamImages" class="photo-grid"></div>
-      </section>
-
-      <!-- My Photos Section -->
-      <section id="myPhotos" class="tabContent" style="display: none;">
-        <div id="myImages" class="photo-grid"></div>
-      </section>
-
-      <!-- Account Settings Section -->
-      <section id="account" class="tabContent" style="display: none;">
-        <h2>Account Settings</h2>
-
-        <!-- Profile Picture Section -->
-        <div id="profilePicSection">
-          <h3>Profile Picture</h3>
-          <img id="profilePic" src="" alt="Profile Picture" width="150" height="150" />
-          <input type="file" id="profilePicInput" accept="image/*" />
-          <button id="updateProfilePicBtn">Update Profile Picture</button>
-        </div>
-
-        <!-- Username Section -->
-        <div id="usernameSection">
-          <h3>Username</h3>
-          <input type="text" id="usernameInput" placeholder="New Username" />
-          <button id="updateUsernameBtn">Update Username</button>
-        </div>
-
-        <!-- Password Section -->
-        <div id="passwordSection">
-          <h3>Password</h3>
-          <input type="password" id="newPasswordInput" placeholder="New Password" />
-          <button id="updatePasswordBtn">Update Password</button>
-        </div>
-
-        <!-- Delete Account Section -->
-        <div id="deleteAccountSection">
-          <h3>Delete Account</h3>
-          <button id="deleteAccountBtn" style="background-color: red;">Delete My Account</button>
-          <p>Warning: This action will permanently delete your account and all photos.</p>
-        </div>
-      </section>
-
-      <!-- Search for Other Users -->
-      <section id="userSearchSection">
-        <h3>Search for a User</h3>
-        <input type="text" id="searchUsername" placeholder="Enter username" />
-        <button id="searchUserBtn">Search</button>
-        <div id="userProfileSection" style="display: none;">
-          <h3>User Profile</h3>
-          <img id="userProfilePic" src="" alt="User Profile Picture" width="150" height="150" />
-          <p id="userBio"></p>
-          <div id="userImages" class="photo-grid"></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Authentication Modal -->
-  <div id="authModal" class="modal">
-    <div class="modal-content">
-      <span id="closeModal" class="close">&times;</span>
-      <h2 id="authTitle">Login</h2>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <button id="authActionBtn">Login</button>
-      <p id="toggleAuth">Don't have an account? <span class="switchAuth">Sign up</span></p>
-    </div>
-  </div>
-
+  <h1>Welcome to PicPal</h1>
+  <a href="/auth/google">Login with Google</a>
   <script src="/js/script.js"></script>
 </body>
 </html>
