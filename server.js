@@ -12,6 +12,7 @@ const path = require('path');
 const cors = require('cors');
 
 const User = require('./models/User');
+const Post = require('./models/Post');
 const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
 const userRoutes = require('./routes/users');
@@ -19,24 +20,33 @@ const groupRoutes = require('./routes/groups');
 
 const app = express();
 
+// === MongoDB ===
 mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true, useUnifiedTopology: true,
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 }).then(() => console.log("✅ MongoDB connected"));
 
+// === Middleware ===
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.set('trust proxy', 1); // Required for cookies on Render
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+  cookie: {
+    secure: true,
+    sameSite: 'lax'
+  }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
+// === Passport Google Strategy ===
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -59,6 +69,7 @@ passport.deserializeUser(async (id, done) => {
   done(null, user);
 });
 
+// === Cloudinary Upload Setup ===
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -69,18 +80,34 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 app.post('/upload', upload.single('media'), async (req, res) => {
-  const stream = cloudinary.uploader.upload_stream({ folder: 'picpal' }, (error, result) => {
+  const stream = cloudinary.uploader.upload_stream({ folder: 'picpal' }, async (error, result) => {
     if (error) return res.status(500).json({ error });
-    res.json({ url: result.secure_url });
+    const newPost = await Post.create({
+      user: req.user._id,
+      media: result.secure_url,
+      caption: req.body.caption,
+      hashtags: req.body.hashtags.split(',').map(tag => tag.trim()),
+    });
+    res.json(newPost);
   });
   streamifier.createReadStream(req.file.buffer).pipe(stream);
 });
 
+// === Authentication Check ===
+app.get('/api/me', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.json(req.user);
+  }
+  res.status(401).json({ error: 'Not authenticated' });
+});
+
+// === Routes ===
 app.use('/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
 
+// === Static + Entry ===
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 
