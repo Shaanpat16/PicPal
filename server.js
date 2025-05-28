@@ -20,33 +20,34 @@ const groupRoutes = require('./routes/groups');
 
 const app = express();
 
-// === MongoDB ===
+// ✅ MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log("✅ MongoDB connected"));
 
-// === Middleware ===
+// ✅ Middleware setup
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.set('trust proxy', 1); // Required for cookies on Render
 
+// ✅ Trust proxy and secure session (REQUIRED on Render)
+app.set('trust proxy', 1);
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
   cookie: {
-    secure: true,
-    sameSite: 'lax'
+    secure: true,      // Render uses HTTPS
+    sameSite: 'lax',   // allow cross-site auth flow
   }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// === Passport Google Strategy ===
+// ✅ Passport Google strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -69,7 +70,7 @@ passport.deserializeUser(async (id, done) => {
   done(null, user);
 });
 
-// === Cloudinary Upload Setup ===
+// ✅ Cloudinary setup for media upload
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -80,7 +81,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 app.post('/upload', upload.single('media'), async (req, res) => {
-  const stream = cloudinary.uploader.upload_stream({ folder: 'picpal' }, async (error, result) => {
+  const stream = cloudinary.uploader.upload_stream({ folder: 'cliuqe' }, async (error, result) => {
     if (error) return res.status(500).json({ error });
     const newPost = await Post.create({
       user: req.user._id,
@@ -93,7 +94,7 @@ app.post('/upload', upload.single('media'), async (req, res) => {
   streamifier.createReadStream(req.file.buffer).pipe(stream);
 });
 
-// === Authentication Check ===
+// ✅ Auth check route
 app.get('/api/me', (req, res) => {
   if (req.isAuthenticated()) {
     return res.json(req.user);
@@ -101,13 +102,13 @@ app.get('/api/me', (req, res) => {
   res.status(401).json({ error: 'Not authenticated' });
 });
 
-// === Routes ===
+// ✅ Routes
 app.use('/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
 
-// === Static + Entry ===
+// ✅ Static files and default route
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 
