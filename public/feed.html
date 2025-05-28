@@ -2,13 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Feed - PicPal</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>Cliuqe Feed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
-  <h1>Your Feed</h1>
-  <div id="feed"></div>
-  <script src="/js/script.js"></script>
+  <h1>Welcome to Cliuqe 🌀</h1>
+  <div id="userInfo"></div>
+  <div id="feed">Loading posts...</div>
+
+  <script>
+    // Auth check
+    fetch('/api/me')
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(user => {
+        document.getElementById('userInfo').innerHTML = `
+          <p>Hello, <strong>${user.username}</strong></p>
+          <img src="${user.profilePic}" width="60" style="border-radius:50%;" />
+        `;
+      })
+      .catch(() => {
+        window.location.href = '/login.html';
+      });
+
+    // Fetch posts
+    fetch('/api/posts')
+      .then(res => res.json())
+      .then(posts => {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = posts.map(p => `
+          <div style="margin:20px 0; padding:10px; border-bottom:1px solid #ccc;">
+            <img src="${p.media}" style="max-width:100%; border-radius:8px;" />
+            <p><strong>${p.user.username}</strong>: ${p.caption}</p>
+            <p style="color:#666">#${p.hashtags.join(" #")}</p>
+          </div>
+        `).join('');
+      });
+  </script>
 </body>
 </html>
-
